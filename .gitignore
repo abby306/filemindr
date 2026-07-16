@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+secrets/
+storage/
+*credentials*.json
+*-key.json
+*_key.json
+.pytest_cache/
+dev_ui/
+.claude/skills/
+eval/gold/local*.yaml

@@ -1,0 +1,109 @@
+# Gold query set for the SYNTHETIC demo corpus (scripts/make_demo_corpus.py).
+#
+# All documents, names, and figures here are fictional. Fact substrings are
+# grounded in the demo documents' source text; extraction may phrase an atomic
+# fact slightly differently, so after your first `seed_corpus` run treat these
+# as a scaffold — verify/adjust substrings against your own `document_facts`
+# rows for tight numbers. Slugs token-map onto the demo filenames/titles
+# (see scripts/eval_retrieval.py); pin with --doc-map if a mapping misses.
+#
+# 13 queries across the four intents: aggregate / lexical / metadata / semantic.
+
+# --- aggregate (amounts, totals) --------------------------------------------
+
+- id: acme_invoice_total
+  query: "What is the total amount due on the Acme invoice?"
+  type: aggregate
+  expected_doc_ids: ["acme-web-services-invoice"]
+  expected_fact_substrings: ["1840.00"]
+  answer_contains: ["1840"]
+
+- id: cafe_receipt_total
+  query: "How much did I spend at Blue Fern Cafe?"
+  type: aggregate
+  expected_doc_ids: ["blue-fern-cafe-receipt"]
+  expected_fact_substrings: ["23.75"]
+  answer_contains: ["23.75"]
+
+- id: cafe_vat
+  query: "What was the VAT on the Blue Fern Cafe receipt?"
+  type: aggregate
+  expected_doc_ids: ["blue-fern-cafe-receipt"]
+  expected_fact_substrings: ["2.85"]
+  answer_contains: ["2.85"]
+
+- id: harbor_closing_balance
+  query: "What is the closing balance on the Harbor Bank statement?"
+  type: aggregate
+  expected_doc_ids: ["harbor-bank-statement"]
+  expected_fact_substrings: ["12430.19"]
+  answer_contains: ["12430.19"]
+
+# --- lexical (exact ids, names, values) --------------------------------------
+
+- id: acme_invoice_number
+  query: "What is the invoice number on the Acme invoice?"
+  type: lexical
+  expected_doc_ids: ["acme-web-services-invoice"]
+  expected_fact_substrings: ["INV-2041"]
+  answer_contains: ["INV-2041"]
+
+- id: cafe_receipt_number
+  query: "What is the receipt number from Blue Fern Cafe?"
+  type: lexical
+  expected_doc_ids: ["blue-fern-cafe-receipt"]
+  expected_fact_substrings: ["55031"]
+  answer_contains: ["55031"]
+
+- id: orbit_mqtt_port
+  query: "Which port does the Orbit tracker use for MQTT?"
+  type: lexical
+  expected_doc_ids: ["orbit-asset-tracker-specification"]
+  expected_fact_substrings: ["1883"]
+  answer_contains: ["1883"]
+
+# --- metadata (parties, dates, attributes) -----------------------------------
+
+- id: nda_parties
+  query: "Who are the parties to the Meridian NDA?"
+  type: metadata
+  expected_doc_ids: ["meridian-mutual-nda-agreement"]
+  expected_fact_substrings: ["Meridian Labs", "Alex Doe"]
+  answer_contains: ["Meridian Labs", "Alex Doe"]
+
+- id: nda_term
+  query: "How long does the Meridian NDA stay in effect?"
+  type: metadata
+  expected_doc_ids: ["meridian-mutual-nda-agreement"]
+  expected_fact_substrings: ["five years"]
+  answer_contains: ["five years"]
+
+- id: certificate_completion_date
+  query: "When did Alex Doe complete the Data Engineering course?"
+  type: metadata
+  expected_doc_ids: ["certificate-data-engineering-completion"]
+  expected_fact_substrings: ["2026-02-10"]
+  answer_contains: ["2026"]
+
+- id: resume_gpa
+  query: "What is Alex Doe's GPA?"
+  type: metadata
+  expected_doc_ids: ["alex-doe-resume"]
+  expected_fact_substrings: ["3.80"]
+  answer_contains: ["3.80"]
+
+# --- semantic (paraphrased, conceptual) ---------------------------------------
+
+- id: garden_model
+  query: "What model architecture does the automated garden project use?"
+  type: semantic
+  expected_doc_ids: ["automated-garden-project-plan"]
+  expected_fact_substrings: ["LSTM"]
+  answer_contains: ["LSTM"]
+
+- id: orbit_battery_life
+  query: "How long does the Orbit tracker's battery last?"
+  type: semantic
+  expected_doc_ids: ["orbit-asset-tracker-specification"]
+  expected_fact_substrings: ["18 months"]
+  answer_contains: ["18 months"]

@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: filemindr
+          POSTGRES_PASSWORD: localdev
+          POSTGRES_DB: filemindr
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U filemindr"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Apply schema (Alembic runs schema.sql + migrations)
+        env:
+          DATABASE_URL: postgresql+psycopg://filemindr:localdev@localhost:5432/filemindr
+        run: alembic upgrade head
+
+      # The suite is fully offline: every network/model seam (DeepSeek, Vision,
+      # bge, Gemini, GPT-4o) is mocked — no API keys needed, no model downloads.
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+psycopg://filemindr:localdev@localhost:5432/filemindr
+        run: pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
