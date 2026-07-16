@@ -43,7 +43,7 @@ export function Composer({
         onClick={submit}
         disabled={disabled || !value.trim()}
         aria-label="Send"
-        className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-p-0 transition-colors hover:bg-accent-hover disabled:opacity-40"
+        className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-40"
       >
         <ArrowUp aria-hidden className="size-4" />
       </button>

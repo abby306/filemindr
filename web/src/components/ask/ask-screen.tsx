@@ -172,7 +172,14 @@ export function AskScreen({
               <EmptyAsk />
             ) : (
               <>
-                <MessageThread turns={turns} />
+                <MessageThread
+                  turns={turns}
+                  scopeLabel={
+                    scopedDocumentId
+                      ? scopedDoc?.title?.trim() || "this document"
+                      : undefined
+                  }
+                />
                 <div ref={bottomRef} />
               </>
             )}

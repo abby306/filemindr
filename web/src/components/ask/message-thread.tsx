@@ -10,28 +10,47 @@ import { RatingRow } from "@/components/ask/rating-row";
 import { Trace } from "@/components/ask/trace";
 import type { AssistantTurn, Turn } from "@/features/ask/types";
 
-export function MessageThread({ turns }: { turns: Turn[] }) {
+export function MessageThread({
+  turns,
+  scopeLabel,
+}: {
+  turns: Turn[];
+  /** Set when the chat is scoped to one document (feeds the trace summary). */
+  scopeLabel?: string;
+}) {
   return (
     <div className="flex flex-col gap-6">
       {turns.map((turn, i) =>
         turn.role === "user" ? (
           <div key={i} className="flex justify-end">
-            <p className="max-w-[80%] rounded-2xl rounded-br-sm bg-accent-50 px-4 py-2.5 type-body text-text-1">
+            <p className="max-w-[80%] rounded-2xl rounded-br-sm bg-accent px-4 py-2.5 type-body text-on-accent">
               {turn.content}
             </p>
           </div>
         ) : (
-          <AssistantMessage key={i} turn={turn} />
+          <AssistantMessage key={i} turn={turn} scopeLabel={scopeLabel} />
         ),
       )}
     </div>
   );
 }
 
-function AssistantMessage({ turn }: { turn: AssistantTurn }) {
+function AssistantMessage({
+  turn,
+  scopeLabel,
+}: {
+  turn: AssistantTurn;
+  scopeLabel?: string;
+}) {
   return (
     <div className="flex flex-col">
-      <Trace steps={turn.steps} streaming={turn.status === "streaming"} elapsedMs={turn.elapsedMs} />
+      <Trace
+        steps={turn.steps}
+        streaming={turn.status === "streaming"}
+        elapsedMs={turn.elapsedMs}
+        sourceCount={turn.citationGroups?.length}
+        scopeLabel={scopeLabel}
+      />
 
       {turn.status === "error" ? (
         <p className="flex items-center gap-1.5 type-body text-danger">

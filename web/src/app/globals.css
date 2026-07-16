@@ -410,7 +410,9 @@
     }
   }
   .animate-source-flash {
-    animation: source-flash 600ms var(--ease-quiet);
+    /* forwards: end transparent — without it the wash snaps back to opacity 1
+       when the animation finishes and the page stays amber. */
+    animation: source-flash 600ms var(--ease-quiet) forwards;
   }
 
   /* SourceGlow — the wash fades in over the cited region and settles.

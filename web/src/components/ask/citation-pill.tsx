@@ -4,7 +4,7 @@
  *  document view at the cited page, where the source pane flashes it (SourceGlow). */
 
 import Link from "next/link";
-import { Highlighter } from "lucide-react";
+import { MapPin } from "lucide-react";
 
 import type { CitationGroup } from "@/lib/api/types";
 
@@ -26,10 +26,10 @@ export function CitationPill({ group }: { group: CitationGroup }) {
   return (
     <Link
       href={href}
-      className="group inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 transition-colors hover:border-hl hover:bg-hl-wash"
+      className="animate-materialize inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 transition-colors hover:border-hl hover:bg-hl-wash"
     >
-      <Highlighter aria-hidden className="size-3.5 shrink-0 text-hl-strong" />
-      <span className="truncate type-subhead text-text-1">
+      <MapPin aria-hidden className="size-3 shrink-0 text-hl-strong" />
+      <span className="truncate type-data text-text-1">
         {group.title || "Document"}
       </span>
       {pages ? <span className="shrink-0 type-data text-text-3">{pages}</span> : null}

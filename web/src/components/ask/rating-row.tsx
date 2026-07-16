@@ -19,7 +19,10 @@ export function RatingRow({ messageId }: { messageId: string }) {
   };
 
   return (
-    <div className="mt-2 flex items-center gap-1">
+    <div className="mt-3 flex items-center gap-1">
+      <span className="mr-1 type-caption text-text-3">
+        {choice ? "Thanks" : "Helpful?"}
+      </span>
       <button
         type="button"
         aria-label="Helpful"
@@ -44,7 +47,6 @@ export function RatingRow({ messageId }: { messageId: string }) {
       >
         <ThumbsDown aria-hidden className="size-3.5" />
       </button>
-      {choice ? <span className="ml-1 type-caption text-text-3">Thanks</span> : null}
     </div>
   );
 }

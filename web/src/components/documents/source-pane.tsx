@@ -104,7 +104,7 @@ export function SourcePane({
               <span
                 key={`${page}-${highlightBbox.join(",")}`}
                 aria-hidden
-                className="pointer-events-none absolute rounded-[2px] bg-hl-wash mix-blend-multiply motion-safe:animate-source-sweep"
+                className="animate-source-sweep pointer-events-none absolute rounded-[2px] bg-hl-wash mix-blend-multiply"
                 style={{
                   left: `${highlightBbox[0] * 100}%`,
                   top: `${highlightBbox[1] * 100}%`,
@@ -116,7 +116,7 @@ export function SourcePane({
               <span
                 key={flashKey}
                 aria-hidden
-                className="pointer-events-none absolute inset-0 rounded-md bg-hl-wash motion-safe:animate-source-flash"
+                className="animate-source-flash pointer-events-none absolute inset-0 rounded-md bg-hl-wash"
               />
             ) : null}
           </div>
