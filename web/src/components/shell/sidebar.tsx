@@ -42,7 +42,7 @@ function NavLink({
         "flex items-center gap-3 rounded-md px-3 py-2 type-subhead transition-colors",
         "min-h-11", // ≥44px touch target
         active
-          ? "bg-accent-50 text-accent shadow-[inset_2px_0_0_0_var(--accent)]"
+          ? "bg-accent-50 text-accent-text shadow-[inset_2px_0_0_0_var(--accent)]"
           : "text-text-2 hover:bg-surface-2 hover:text-text-1",
       )}
     >
@@ -50,7 +50,7 @@ function NavLink({
       <span>{item.label}</span>
       {badge && badge > 0 ? (
         <span
-          className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-hl px-1.5 type-caption text-p-950"
+          className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-warn/15 px-1.5 type-caption text-warn"
           aria-label={`${badge}${badgeMore ? "+" : ""} awaiting review`}
         >
           {badge}

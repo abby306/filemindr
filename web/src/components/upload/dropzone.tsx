@@ -54,23 +54,23 @@ export function Dropzone() {
         if (e.dataTransfer.files?.length) uploadFiles(e.dataTransfer.files);
       }}
       className={clsx(
-        "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-14 text-center transition-colors duration-[var(--dur-base)]",
+        "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-[1.5px] border-dashed px-6 py-14 text-center transition-[border-color,background-color,transform] duration-[var(--dur-base)]",
         dragging
-          ? "border-accent bg-accent-50"
-          : "border-border-strong bg-card/60 hover:border-accent-300 hover:bg-card",
+          ? "scale-[1.005] border-accent bg-accent-50"
+          : "border-border-strong bg-surface hover:border-accent-300",
       )}
     >
       <span
         className={clsx(
           "flex size-14 items-center justify-center rounded-full transition-colors",
-          dragging ? "bg-accent text-p-0" : "bg-surface-2 text-accent",
+          dragging ? "bg-accent text-on-accent" : "bg-accent-50 text-accent-text",
         )}
       >
         <UploadCloud aria-hidden className="size-7" strokeWidth={1.5} />
       </span>
       <div>
         <p className="type-title3 text-text-1">
-          {dragging ? "Drop to file them" : "Drop files here"}
+          {dragging ? "Drop to upload" : "Drop files here"}
         </p>
         <p className="mt-1 type-callout text-text-2">
           or click to browse · paste works too

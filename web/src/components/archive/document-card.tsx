@@ -1,9 +1,7 @@
 /**
- * DocumentCard — a manila filing card: warm card surface, a bold category tab
- * along the top edge (color that means the folder), a serif "record" title, then
- * summary and a meta footer. Per-document class labels aren't in the list
- * payload, so the tab tints to the active folder when browsing one. Links to the
- * (future) document view; lifts gently on hover.
+ * DocumentCard — a clean surface card: title, summary, then a meta footer with
+ * the live pipeline state. Color no longer encodes folders (v2); the card lifts
+ * gently on hover and materializes with a soft spring when it first appears.
  */
 
 import Link from "next/link";
@@ -16,10 +14,9 @@ import type { DocumentSummary } from "@/lib/api/types";
 
 export function DocumentCard({
   doc,
-  tint,
 }: {
   doc: DocumentSummary;
-  /** Folder category color for the card's tab; neutral when absent. */
+  /** Ignored since v2 (color no longer encodes folders); kept for callers. */
   tint?: string;
 }) {
   const title = doc.title?.trim() || doc.original_filename;
@@ -29,14 +26,8 @@ export function DocumentCard({
   return (
     <Link
       href={`/documents/${doc.id}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-e1 transition-[box-shadow,transform] duration-[var(--dur-base)] ease-[var(--ease-quiet)] hover:shadow-e2 focus-visible:shadow-e2 motion-safe:hover:-translate-y-0.5"
+      className="group animate-materialize flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-e1 transition-[box-shadow,transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-quiet)] hover:border-border-strong hover:shadow-e2 focus-visible:shadow-e2"
     >
-      {/* category tab */}
-      <span
-        aria-hidden
-        className="h-1.5 w-full"
-        style={{ backgroundColor: tint ?? "var(--border-strong)" }}
-      />
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h3 className="type-record text-text-1 transition-colors group-hover:text-accent">
           {title}

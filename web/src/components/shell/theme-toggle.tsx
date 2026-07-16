@@ -16,7 +16,7 @@ export function ThemeToggle() {
       type="button"
       onClick={() => setTheme(next)}
       aria-label={`Switch to ${next} mode`}
-      className="flex size-9 items-center justify-center rounded-md text-on-ink-muted transition-colors hover:bg-white/10 hover:text-on-ink"
+      className="flex size-9 items-center justify-center rounded-md text-text-2 transition-colors hover:bg-surface-2 hover:text-text-1"
     >
       {theme === "dark" ? (
         <Sun aria-hidden className="size-4" />

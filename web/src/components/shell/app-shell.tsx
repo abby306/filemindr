@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [drawerOpen]);
 
   return (
-    <div className="paper-grain flex h-dvh flex-col overflow-hidden bg-canvas text-text-1">
+    <div className="flex h-dvh flex-col overflow-hidden bg-canvas text-text-1">
       <TopBar onMenu={() => setDrawerOpen(true)} />
 
       <div className="flex min-h-0 flex-1">

@@ -38,7 +38,7 @@ export function BackendStatus() {
 
   return (
     <span
-      className="flex items-center gap-2 type-caption text-on-ink-muted"
+      className="flex items-center gap-2 type-caption text-text-3"
       role="status"
       aria-live="polite"
       title={`API ${label}`}

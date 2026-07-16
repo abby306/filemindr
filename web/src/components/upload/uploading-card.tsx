@@ -24,12 +24,12 @@ export function UploadingCard({
   const size = formatBytes(entry.size);
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-e1">
-      <span
-        aria-hidden
-        className="h-1.5 w-full"
-        style={{ backgroundColor: isError ? "var(--danger)" : "var(--border-strong)" }}
-      />
+    <div
+      className={
+        "animate-materialize flex flex-col overflow-hidden rounded-lg border bg-card shadow-e1 " +
+        (isError ? "border-danger/40" : "border-border")
+      }
+    >
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h3 className="type-record truncate text-text-1" title={entry.name}>
           {entry.name}
@@ -59,9 +59,14 @@ export function UploadingCard({
             </div>
           </>
         ) : (
-          <div className="mt-auto flex items-center gap-2 pt-1 type-caption text-text-3">
-            <Loader2 aria-hidden className="size-3.5 motion-safe:animate-spin" />
-            Uploading{size ? ` · ${size}` : ""}
+          <div className="mt-auto flex flex-col gap-1.5 pt-1">
+            <span aria-hidden className="relative h-1 w-full max-w-40 overflow-hidden rounded-full bg-surface-2">
+              <span className="animate-seg-shimmer absolute inset-0 rounded-full" />
+            </span>
+            <span className="flex items-center gap-2 type-caption text-text-3">
+              <Loader2 aria-hidden className="size-3.5 motion-safe:animate-spin" />
+              Uploading{size ? ` · ${size}` : ""}
+            </span>
           </div>
         )}
       </div>
