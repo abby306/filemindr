@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
 
+import { PageThumb } from "@/components/archive/page-thumb";
 import { CandidateChip } from "@/components/review/candidate-chip";
 import { ClassPicker } from "@/components/review/class-picker";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -192,15 +193,30 @@ export function ReviewDeck() {
   return (
     <Wrapper progress={{ done: doneIds.size, total }}>
       <div key={current.id} className="animate-review-in flex flex-col gap-6">
-        <div>
-          <p className="eyebrow mb-1.5">{reason}</p>
-          <h2 className="type-record text-text-1">{title}</h2>
-          {cardPending ? (
-            <Skeleton className="mt-3 h-12 w-full" />
-          ) : card?.summary ? (
-            <p className="mt-2 line-clamp-3 type-body text-text-2">{card.summary}</p>
-          ) : null}
-          <p className="mt-2 type-data text-text-3">{current.original_filename}</p>
+        <div className="flex gap-4">
+          <Link
+            href={`/documents/${current.id}`}
+            aria-label={`Open ${title}`}
+            className="shrink-0 transition-opacity hover:opacity-80"
+          >
+            <PageThumb
+              documentId={current.id}
+              mimeType={current.mime_type}
+              className="h-24 w-[72px]"
+            />
+          </Link>
+          <div className="min-w-0">
+            <p className="eyebrow mb-1.5">{reason}</p>
+            <h2 className="type-record text-text-1">{title}</h2>
+            {cardPending ? (
+              <Skeleton className="mt-3 h-12 w-full" />
+            ) : card?.summary ? (
+              <p className="mt-2 line-clamp-3 type-body text-text-2">{card.summary}</p>
+            ) : null}
+            <p className="mt-2 truncate type-data text-text-3">
+              {current.original_filename}
+            </p>
+          </div>
         </div>
 
         {candidates.length > 0 ? (
@@ -212,7 +228,6 @@ export function ReviewDeck() {
                 <CandidateChip
                   key={c.slug}
                   name={c.name ?? c.slug}
-                  slug={c.slug}
                   parentSlug={c.parent_slug}
                   confidence={c.confidence}
                   shortcut={i + 1}

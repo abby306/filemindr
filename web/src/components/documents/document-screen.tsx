@@ -154,8 +154,6 @@ function Card({
               <ClassChip
                 key={c.slug}
                 name={c.name ?? c.slug}
-                slug={c.slug}
-                parentSlug={c.parent_slug}
                 confidence={c.confidence}
                 primary={c.is_primary}
               />

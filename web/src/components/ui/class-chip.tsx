@@ -1,21 +1,15 @@
-/** ClassChip — a document's class label: category tint, name, optional parent
- *  context and confidence. `primary` styles the folder-owning class prominently;
- *  secondary labels read quieter. */
+/** ClassChip — a document's class label: name, optional parent context and
+ *  confidence. `primary` styles the folder-owning class prominently; secondary
+ *  labels read quieter. (v2: color no longer encodes folders — no tint dot.) */
 
 import clsx from "clsx";
 
-import { tintForSlug } from "@/features/archive/taxonomy";
-
 export function ClassChip({
   name,
-  slug,
-  parentSlug,
   confidence,
   primary,
 }: {
   name: string;
-  slug: string;
-  parentSlug: string | null;
   confidence?: number | null;
   primary?: boolean;
 }) {
@@ -29,11 +23,6 @@ export function ClassChip({
           : "border-border bg-surface-2",
       )}
     >
-      <span
-        aria-hidden
-        className="size-2.5 shrink-0 rounded-[3px]"
-        style={{ backgroundColor: tintForSlug(parentSlug ?? slug) }}
-      />
       <span className={clsx("type-subhead", primary ? "text-text-1" : "text-text-2")}>
         {name}
       </span>
@@ -41,7 +30,7 @@ export function ClassChip({
         <span className="type-data text-text-3">{pct}%</span>
       ) : null}
       {primary ? (
-        <span className="type-caption uppercase text-accent">primary</span>
+        <span className="type-caption uppercase text-accent-text">primary</span>
       ) : null}
     </span>
   );

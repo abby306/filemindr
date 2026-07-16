@@ -3,19 +3,16 @@
 /**
  * CandidateChip — a class the model proposed for an ambiguous document, shown
  * with its confidence and a keyboard-shortcut hint. Confirm by click or the
- * matching number key. Carries its own category tint for continuity with the
- * archive.
+ * matching number key. (v2: color no longer encodes folders — no tint dot.)
  */
 
 import clsx from "clsx";
 
 import { ConfidenceBar } from "@/components/ui/confidence-bar";
-import { tintForSlug } from "@/features/archive/taxonomy";
 
 export function CandidateChip({
   name,
   parentSlug,
-  slug,
   confidence,
   shortcut,
   onConfirm,
@@ -23,13 +20,11 @@ export function CandidateChip({
 }: {
   name: string;
   parentSlug: string | null;
-  slug: string;
   confidence: number | null;
   shortcut?: number;
   onConfirm: () => void;
   disabled?: boolean;
 }) {
-  const tint = tintForSlug(parentSlug ?? slug);
   return (
     <button
       type="button"
@@ -40,16 +35,11 @@ export function CandidateChip({
         "hover:border-accent-300 hover:bg-accent-50 focus-visible:border-accent disabled:opacity-60",
       )}
     >
-      <span
-        aria-hidden
-        className="size-3 shrink-0 rounded-[3px]"
-        style={{ backgroundColor: tint }}
-      />
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline justify-between gap-2">
           <span className="truncate type-headline text-text-1">{name}</span>
           {parentSlug ? (
-            <span className="shrink-0 type-caption text-text-3">{parentSlug}</span>
+            <span className="shrink-0 type-data text-text-3">{parentSlug}</span>
           ) : null}
         </span>
         <ConfidenceBar value={confidence} className="mt-1.5" />

@@ -13,7 +13,7 @@ import { FolderPlus, Search } from "lucide-react";
 import clsx from "clsx";
 
 import { useClasses } from "@/features/archive/queries";
-import { tintForSlug } from "@/features/archive/taxonomy";
+import { CLASS_FOLDER_ICON } from "@/features/archive/taxonomy";
 import type { ClassInfo } from "@/lib/api/types";
 
 const MAX_RESULTS = 7;
@@ -103,14 +103,14 @@ export function ClassPicker({
                 highlight === i ? "bg-accent-50" : "hover:bg-surface-2",
               )}
             >
-              <span
+              <CLASS_FOLDER_ICON
                 aria-hidden
-                className="size-2.5 shrink-0 rounded-[3px]"
-                style={{ backgroundColor: tintForSlug(c.parent_slug ?? c.slug) }}
+                className="size-3.5 shrink-0 text-text-3"
+                strokeWidth={1.75}
               />
               <span className="type-subhead text-text-1">{c.name}</span>
               {c.parent_slug ? (
-                <span className="ml-auto type-caption text-text-3">{c.parent_slug}</span>
+                <span className="ml-auto type-data text-text-3">{c.parent_slug}</span>
               ) : null}
             </button>
           </li>
