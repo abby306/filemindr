@@ -2,7 +2,7 @@
 
 /**
  * UsageMeter — one plan limit as a meter. The fill carries severity along the
- * status ramp (accent → amber past 75% → red past 90%) and the unfilled track
+ * status ramp (accent → warn past 75% → red past 90%) and the unfilled track
  * is a lighter step of the same ramp so state reads across the whole bar
  * (dataviz meter spec). Color is never the sole signal: the exact numbers ride
  * beside the label in the data voice, and near-limit adds a warning icon +
@@ -37,7 +37,7 @@ export function UsageMeter({
               aria-hidden
               className={clsx(
                 "size-3.5",
-                severity === "danger" ? "text-danger" : "text-hl-strong",
+                severity === "danger" ? "text-danger" : "text-warn-text",
               )}
               strokeWidth={2}
             />
@@ -62,7 +62,7 @@ export function UsageMeter({
           "h-2 overflow-hidden rounded-full",
           severity === "none" && "bg-surface-2",
           severity === "ok" && "bg-accent/20",
-          severity === "warn" && "bg-hl-wash",
+          severity === "warn" && "bg-warn/15",
           severity === "danger" && "bg-danger/15",
         )}
       >
@@ -71,7 +71,7 @@ export function UsageMeter({
             className={clsx(
               "h-full rounded-full",
               severity === "ok" && "bg-accent",
-              severity === "warn" && "bg-hl",
+              severity === "warn" && "bg-warn",
               severity === "danger" && "bg-danger",
             )}
             style={{ width: `${pct}%` }}

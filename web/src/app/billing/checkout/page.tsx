@@ -55,7 +55,7 @@ function CheckoutBody() {
           <span className="flex items-center gap-1.5 type-subhead text-text-2">
             <Lock aria-hidden className="size-4" /> Secure checkout
           </span>
-          <span className="rounded-full bg-hl-wash px-2.5 py-0.5 type-caption uppercase text-hl-strong">
+          <span className="rounded-full bg-warn/10 px-2.5 py-0.5 type-caption uppercase text-warn-text">
             Test mode
           </span>
         </div>

@@ -57,6 +57,7 @@
   /* status — always paired with a label/icon, never color alone */
   --ok: #16a34a;
   --warn: #d97706;
+  --warn-text: #b45309; /* warn used AS text (AA on light surfaces) */
   --danger: #dc2626;
   --idle: var(--p-500);
   --info: var(--accent);
@@ -129,6 +130,7 @@
 
   --ok: #3ecf6e;
   --warn: #f5a623;
+  --warn-text: #f5a623;
   --danger: #f87171;
   --idle: #6e7078;
   --info: var(--accent-text);
@@ -184,6 +186,7 @@
 
   --color-ok: var(--ok);
   --color-warn: var(--warn);
+  --color-warn-text: var(--warn-text);
   --color-danger: var(--danger);
   --color-idle: var(--idle);
   --color-info: var(--info);

@@ -207,7 +207,7 @@ export default function BillingPage() {
                       <div className="flex items-center justify-between">
                         <h3 className="type-title3 text-text-1">{plan.name}</h3>
                         {current ? (
-                          <span className="rounded-full bg-accent/15 px-2 py-0.5 type-caption text-accent">
+                          <span className="rounded-full bg-accent-50 px-2 py-0.5 type-caption text-accent-text">
                             Current
                           </span>
                         ) : null}

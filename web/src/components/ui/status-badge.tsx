@@ -10,7 +10,7 @@ import type { DocumentStatus } from "@/lib/api/types";
 
 const DOT: Record<StatusTone, string> = {
   ok: "bg-ok",
-  warn: "bg-hl",
+  warn: "bg-warn",
   danger: "bg-danger",
   idle: "bg-idle",
   accent: "bg-accent",
@@ -18,10 +18,10 @@ const DOT: Record<StatusTone, string> = {
 
 const TEXT: Record<StatusTone, string> = {
   ok: "text-ok",
-  warn: "text-hl-strong",
+  warn: "text-warn-text",
   danger: "text-danger",
   idle: "text-text-3",
-  accent: "text-accent",
+  accent: "text-accent-text",
 };
 
 export function StatusBadge({

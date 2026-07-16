@@ -129,14 +129,6 @@ export function filterKey(filter: FolderFilter): string {
 
 export const CLASS_FOLDER_ICON: LucideIcon = FolderClosed;
 
-/** Design v2: color no longer encodes folders — every category dot is the same
- *  quiet neutral. Still referenced by the review/analytics screens; their
- *  reworks remove the dots entirely, and this helper with them. */
-export function tintForSlug(slug: string): string {
-  void slug;
-  return "var(--p-400)";
-}
-
 /* -----------------------------------------------------------------------------
    Status display metadata (presentational). NOTE: the authoritative never-wait
    step labels ("Reading/Understanding/Filing/Filed") are specced to move

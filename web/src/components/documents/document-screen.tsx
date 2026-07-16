@@ -140,7 +140,7 @@ function Card({
       {doc.status === "needs_review" ? (
         <Link
           href="/review"
-          className="flex items-center justify-between rounded-lg border border-hl/40 bg-hl-wash px-4 py-3 type-subhead text-hl-strong transition-colors hover:bg-hl-wash/70"
+          className="flex items-center justify-between rounded-lg border border-warn/40 bg-warn/10 px-4 py-3 type-subhead text-warn-text transition-colors hover:bg-warn/15"
         >
           This document is awaiting review
           <span aria-hidden>→</span>

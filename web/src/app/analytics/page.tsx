@@ -24,7 +24,6 @@ import {
   useAnalyticsUsage,
   type UsageRange,
 } from "@/features/analytics/queries";
-import { tintForSlug } from "@/features/archive/taxonomy";
 import { formatBytes, formatCompact } from "@/lib/format";
 
 /* SegmentedControl hides `label` below sm; the `icon` slot (visible at every
@@ -199,7 +198,6 @@ export default function AnalyticsPage() {
                         key: c.slug,
                         label: c.name,
                         value: c.count,
-                        tint: tintForSlug(c.slug),
                       }))}
                     />
                   )}
@@ -223,7 +221,7 @@ export default function AnalyticsPage() {
                             <td className="py-2 pr-3">
                               <Link
                                 href={`/documents/${doc.document_id}`}
-                                className="type-callout text-text-1 underline-offset-2 hover:text-accent hover:underline"
+                                className="type-callout text-text-1 underline-offset-2 hover:text-accent-text hover:underline"
                               >
                                 {doc.title ?? "Untitled document"}
                               </Link>
