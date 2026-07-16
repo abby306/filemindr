@@ -132,47 +132,12 @@ export const CLASS_FOLDER_ICON: LucideIcon = FolderClosed;
    intentional color; anything else is assigned deterministically from the same
    earthy palette so it still sits in the paper world.
    ----------------------------------------------------------------------------- */
-const PALETTE = [
-  "#B15A38", // rust
-  "#B7892B", // ochre / gold
-  "#5F7A4F", // sage
-  "#2F7E77", // teal
-  "#3E6493", // denim
-  "#7E4B78", // plum
-  "#A6603F", // clay
-  "#6E7B33", // olive
-  "#A8443A", // brick
-  "#4C6280", // slate blue
-];
-
-/** Intentional colors for common parent categories (fall back to the hash). */
-const NAMED: Record<string, string> = {
-  financial: "#B15A38", // rust
-  finance: "#B15A38",
-  legal: "#7E4B78", // plum
-  technical: "#3E6493", // denim
-  tech: "#3E6493",
-  education: "#5F7A4F", // sage
-  academic: "#5F7A4F",
-  medical: "#2F7E77", // teal
-  health: "#2F7E77",
-  business: "#B7892B", // ochre
-  personal: "#A6603F", // clay
-  government: "#4C6280", // slate blue
-  identity: "#4C6280",
-  property: "#6E7B33", // olive
-  real_estate: "#6E7B33",
-  correspondence: "#A8443A", // brick
-};
-
 export function tintForSlug(slug: string): string {
-  const named = NAMED[slug];
-  if (named) return named;
-  let hash = 0;
-  for (let i = 0; i < slug.length; i++) {
-    hash = (hash * 31 + slug.charCodeAt(i)) >>> 0;
-  }
-  return PALETTE[hash % PALETTE.length];
+  // Design v2: color no longer encodes folders — every category dot/tab is the
+  // same quiet neutral (theme-aware token) until the per-screen reworks remove
+  // the dots entirely.
+  void slug;
+  return "var(--p-400)";
 }
 
 /* -----------------------------------------------------------------------------

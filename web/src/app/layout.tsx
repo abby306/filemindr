@@ -1,28 +1,19 @@
 import type { Metadata } from "next";
-import { Inter, Instrument_Serif, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { Providers } from "@/app/providers";
 import { THEME_INIT_SCRIPT } from "@/lib/theme/theme";
 import "./globals.css";
 
-/* Body / UI workhorse (variable). */
-const inter = Inter({
-  variable: "--font-inter",
+/* The one UI family (variable) — hierarchy comes from size + weight. */
+const geist = Geist({
+  variable: "--font-geist",
   subsets: ["latin"],
   display: "swap",
 });
 
-/* Display / editorial voice — regular + italic only; hierarchy via size. */
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-  display: "swap",
-});
-
-/* Data voice — facts, ids, amounts, trace. */
+/* Data voice — anything the machine says: facts, ids, amounts, the trace. */
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -30,9 +21,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "filemindr — intelligent archivist",
+  title: "filemindr — your archive, answered",
   description:
-    "An intelligent document archivist: upload, understand, and ask — grounded in your own files with provenance.",
+    "An intelligent document archivist: upload, understand, and ask — grounded in your own files with cited sources.",
 };
 
 export default function RootLayout({
@@ -41,7 +32,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${instrumentSerif.variable} ${geistMono.variable}`}
+      className={`${geist.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
       <head>

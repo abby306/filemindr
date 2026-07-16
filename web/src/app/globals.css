@@ -1,123 +1,145 @@
 @import "tailwindcss";
 
-/* =============================================================================
-   filemindr design tokens — "warm-paper Apple calm, provenance as identity",
-   evolved to the **Ink & Manila** identity: a deep fountain-pen-ink masthead,
-   warm manila filing cards, and a category color system (color that *means* a
-   folder). One reserved bold stays the highlighter (provenance). Edit values
-   here; components never hardcode color/radii/duration.
-   ============================================================================= */
-
+/* -----------------------------------------------------------------------------
+   Design v2 — "precision minimal" (agent_guide/FRONTEND.md is being updated to
+   match). Clean neutral surfaces; two colors carry meaning: ink-blue for
+   everything actionable, and the amber highlighter reserved for provenance
+   ("the machine read this"). One type family (Geist) + Geist Mono for data.
+   ----------------------------------------------------------------------------- */
 :root {
-  /* accent — fountain-pen ink (calm authority; deliberately NOT SaaS blue) */
-  --accent-50: #eef1f7;
-  --accent-100: #dce3f0;
-  --accent-300: #9db0d2;
-  --accent: #3b5488;
-  --accent-hover: #314670;
-  --accent-active: #283959;
-  /* text/icons ON an accent fill — flips with the accent's lightness so
-     primary buttons keep AA contrast in both themes */
-  --on-accent: #ffffff;
-
-  /* ink — the masthead band: deep desaturated indigo, "pen on the page". */
-  --ink: #202a44;
-  --ink-2: #171f34;
-  --on-ink: #f3efe8;
-  --on-ink-muted: #a6afc7;
-  --on-ink-border: rgba(243, 239, 232, 0.14);
-
-  /* highlighter — the ONE bold color, RESERVED for provenance / "read this". */
-  --hl: #e0930b;
-  --hl-strong: #b9740a;
-  --hl-wash: rgba(255, 206, 80, 0.35);
-
-  /* paper — barely-warm neutral ramp (canvas is warm, not cream) */
+  /* neutral ramp — barely cool so the blue feels at home */
   --p-0: #ffffff;
-  --p-50: #f7f5f1;
-  --p-100: #f0ece4;
-  --p-200: #e4dfd5;
-  --p-300: #cfc8ba;
-  --p-400: #a69e8f;
-  --p-500: #7a7266;
-  --p-600: #585349;
-  --p-700: #3e3931;
-  --p-900: #1c1a16;
-  --p-950: #100f0c;
+  --p-50: #fafafa;
+  --p-100: #f3f4f6;
+  --p-200: #e7e8eb;
+  --p-300: #d6d8dd;
+  --p-400: #a7a9b0;
+  --p-500: #989aa3;
+  --p-600: #55575e;
+  --p-700: #3a3c42;
+  --p-900: #17181c;
+  --p-950: #0c0d10;
 
-  /* semantic (light) */
+  /* semantic surfaces */
   --canvas: var(--p-50);
   --surface: var(--p-0);
   --surface-2: var(--p-100);
-  --card: #fdfbf6; /* warm manila filing card */
+  --card: var(--p-0);
   --border: var(--p-200);
   --border-strong: var(--p-300);
-  --text-1: var(--p-900);
+  --text-1: var(--p-950);
   --text-2: var(--p-600);
   --text-3: var(--p-500);
 
-  /* status (warm-leaning to sit in the paper world) */
-  --ok: #2f855a;
-  --warn: var(--hl);
-  --danger: #c0392b;
+  /* accent — ink blue: every button, link, focus ring, selection, progress */
+  --accent-50: #eff4fe;
+  --accent-100: #dde7fc;
+  --accent-300: #93b3f5;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-active: #1e40af;
+  --accent-text: #2059d4; /* accent as TEXT on light surfaces */
+  --accent-wash: rgba(37, 99, 235, 0.08);
+  --on-accent: #ffffff;
+
+  /* highlighter — RESERVED for provenance (citations, source wash, wordmark) */
+  --hl: #b78105;
+  --hl-strong: #8a6400;
+  --hl-wash: rgba(255, 211, 61, 0.32);
+
+  /* legacy masthead tokens — now plain surface (the ink band is gone) */
+  --ink: var(--surface);
+  --ink-2: var(--surface);
+  --on-ink: var(--text-1);
+  --on-ink-muted: var(--text-3);
+  --on-ink-border: var(--border);
+
+  /* status — always paired with a label/icon, never color alone */
+  --ok: #16a34a;
+  --warn: #d97706;
+  --danger: #dc2626;
   --idle: var(--p-500);
   --info: var(--accent);
 
-  /* radius */
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 22px;
+  /* radius — tighter than v1 */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --r-xl: 12px;
   --r-pill: 999px;
 
-  /* elevation */
-  --e1: 0 1px 2px rgba(20, 23, 28, 0.06), 0 1px 1px rgba(20, 23, 28, 0.04);
-  --e2: 0 4px 12px rgba(20, 23, 28, 0.08), 0 2px 4px rgba(20, 23, 28, 0.05);
-  --e3: 0 16px 48px rgba(20, 23, 28, 0.16);
+  /* elevation — borders do the structure; shadows stay whisper-quiet */
+  --e1: 0 1px 2px rgba(12, 13, 16, 0.05);
+  --e2: 0 4px 16px rgba(12, 13, 16, 0.08);
+  --e3: 0 16px 48px rgba(12, 13, 16, 0.16);
 
-  /* motion */
+  /* motion — fast, quiet; exits faster than entrances */
   --ease-quiet: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --dur-micro: 160ms;
-  --dur-base: 220ms;
-  --dur-emphasis: 320ms;
-  --dur-sheet: 420ms;
+  --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.15);
+  --dur-micro: 120ms;
+  --dur-base: 160ms;
+  --dur-emphasis: 220ms;
+  --dur-sheet: 240ms;
 }
 
 :root[data-theme="dark"] {
-  /* warm dark (roasted paper, not pure black) */
-  --canvas: #14120f;
-  --surface: #1e1b17;
-  --surface-2: #26221c;
-  --card: #211d18;
-  --border: #332e27;
-  --border-strong: #463f35;
-  --text-1: #f3efe8;
-  --text-2: #b8b0a2;
-  --text-3: #8a8275;
-  --accent: #8aa0d8;
-  --accent-hover: #a2b4e4;
-  --accent-active: #bdcaec;
-  --on-accent: #10141f; /* dark accent is light → dark ink on it (AA) */
-  --ink: #10141f;
-  --ink-2: #0a0d15;
-  --on-ink: #e9e6df;
-  --on-ink-muted: #8b93a9;
-  --on-ink-border: rgba(233, 230, 223, 0.12);
-  --hl: #f0b23d;
-  --hl-strong: #ffc661;
-  --hl-wash: rgba(240, 178, 61, 0.24);
-  --ok: #48bb78;
-  --warn: var(--hl);
-  --danger: #f16a5d;
-  --idle: #8a8275;
+  /* true-neutral dark (not black-black) */
+  --p-0: #16171c;
+  --p-50: #0d0e12;
+  --p-100: #1e2026;
+  --p-200: #2a2c33;
+  --p-300: #3a3d46;
+  --p-400: #565963;
+  --p-500: #6e7078;
+  --p-600: #a6a8b1;
+  --p-700: #c6c8cf;
+  --p-900: #e6e7ea;
+  --p-950: #f2f3f5;
+
+  --canvas: #0d0e12;
+  --surface: #16171c;
+  --surface-2: #1e2026;
+  --card: #16171c;
+  --border: #2a2c33;
+  --border-strong: #3a3d46;
+  --text-1: #f2f3f5;
+  --text-2: #a6a8b1;
+  --text-3: #6e7078;
+
+  --accent-50: rgba(96, 143, 255, 0.1);
+  --accent-100: rgba(96, 143, 255, 0.16);
+  --accent-300: #4f74c9;
+  --accent: #2563eb;
+  --accent-hover: #3b82f6;
+  --accent-active: #60a5fa;
+  --accent-text: #8ab0ff;
+  --accent-wash: rgba(96, 143, 255, 0.13);
+  --on-accent: #ffffff;
+
+  --hl: #f2c744;
+  --hl-strong: #f7d368;
+  --hl-wash: rgba(242, 199, 68, 0.16);
+
+  --ink: var(--surface);
+  --ink-2: var(--surface);
+  --on-ink: var(--text-1);
+  --on-ink-muted: var(--text-3);
+  --on-ink-border: var(--border);
+
+  --ok: #3ecf6e;
+  --warn: #f5a623;
+  --danger: #f87171;
+  --idle: #6e7078;
+  --info: var(--accent-text);
+
+  --e1: none;
+  --e2: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --e3: 0 16px 48px rgba(0, 0, 0, 0.55);
 }
 
-/* -----------------------------------------------------------------------------
-   Map tokens into Tailwind's theme so utilities resolve to tokens.
-   ----------------------------------------------------------------------------- */
 @theme inline {
-  /* paper ramp (for scrims / tints that need a specific step) */
+  /* neutral ramp */
   --color-p-0: var(--p-0);
   --color-p-50: var(--p-50);
   --color-p-100: var(--p-100);
@@ -152,6 +174,8 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-active: var(--accent-active);
+  --color-accent-text: var(--accent-text);
+  --color-accent-wash: var(--accent-wash);
   --color-on-accent: var(--on-accent);
 
   --color-hl: var(--hl);
@@ -164,8 +188,7 @@
   --color-idle: var(--idle);
   --color-info: var(--info);
 
-  --font-serif: var(--font-instrument-serif);
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-geist);
   --font-mono: var(--font-geist-mono);
 
   --radius-sm: var(--r-sm);
@@ -181,68 +204,68 @@
   --ease-standard: var(--ease-standard);
 
   /* type scale — size / line-height (family applied via .type-* helpers) */
-  --text-display: 40px;
-  --text-display--line-height: 46px;
-  --text-title1: 30px;
-  --text-title1--line-height: 36px;
-  --text-title2: 22px;
-  --text-title2--line-height: 28px;
-  --text-title3: 18px;
-  --text-title3--line-height: 24px;
-  --text-headline: 16px;
-  --text-headline--line-height: 22px;
-  --text-body: 15px;
-  --text-body--line-height: 23px;
-  --text-callout: 14px;
-  --text-callout--line-height: 20px;
+  --text-display: 32px;
+  --text-display--line-height: 38px;
+  --text-title1: 24px;
+  --text-title1--line-height: 30px;
+  --text-title2: 18px;
+  --text-title2--line-height: 24px;
+  --text-title3: 15px;
+  --text-title3--line-height: 22px;
+  --text-headline: 14px;
+  --text-headline--line-height: 20px;
+  --text-body: 14px;
+  --text-body--line-height: 21px;
+  --text-callout: 13px;
+  --text-callout--line-height: 19px;
   --text-subhead: 13px;
   --text-subhead--line-height: 18px;
-  --text-caption: 11px;
-  --text-caption--line-height: 14px;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
   --text-data: 13px;
   --text-data--line-height: 18px;
 }
 
 /* -----------------------------------------------------------------------------
-   Type helpers — encode the family rule so callers never re-derive it:
-   serif for editorial sizes (≥19px), Inter for UI/body, mono for data.
-   Instrument Serif ships 400 + italic only → hierarchy via size, never weight.
+   Type helpers — one family, hierarchy from size + weight. Geist Mono is the
+   data voice: anything the machine says (facts, ids, amounts, the trace).
    ----------------------------------------------------------------------------- */
 @layer components {
   .type-display {
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     font-size: var(--text-display);
     line-height: var(--text-display--line-height);
-    font-weight: 400;
-    letter-spacing: -0.01em;
+    font-weight: 600;
+    letter-spacing: -0.02em;
   }
   .type-title1 {
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     font-size: var(--text-title1);
     line-height: var(--text-title1--line-height);
-    font-weight: 400;
-    letter-spacing: -0.01em;
+    font-weight: 600;
+    letter-spacing: -0.015em;
   }
   .type-title2 {
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     font-size: var(--text-title2);
     line-height: var(--text-title2--line-height);
-    font-weight: 400;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
-  /* editorial "record" title — serif at the smallest size it stays crisp. */
+  /* document "record" title — same voice as title3 now (the serif is gone). */
   .type-record {
-    font-family: var(--font-serif);
-    font-size: 20px;
-    line-height: 26px;
-    font-weight: 400;
-    letter-spacing: -0.005em;
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
   .type-title3 {
     font-family: var(--font-sans);
     font-size: var(--text-title3);
     line-height: var(--text-title3--line-height);
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.005em;
   }
   .type-headline {
     font-family: var(--font-sans);
@@ -273,7 +296,6 @@
     font-size: var(--text-caption);
     line-height: var(--text-caption--line-height);
     font-weight: 500;
-    letter-spacing: 0.01em;
   }
   .type-data {
     font-family: var(--font-mono);
@@ -283,28 +305,39 @@
     font-feature-settings: "tnum" 1;
   }
 
-  /* Eyebrow — small accent-ink label above editorial titles. */
+  /* Eyebrow — small mono label above titles (the machine's section voice). */
   .eyebrow {
-    font-family: var(--font-sans);
+    font-family: var(--font-mono);
     font-size: 11px;
     line-height: 14px;
-    font-weight: 600;
-    letter-spacing: 0.14em;
+    font-weight: 500;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--text-3);
+  }
+
+  /* Wordmark — lowercase, tight; the amber wash marks "mind" (provenance). */
+  .wordmark {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+  .wordmark-mark {
+    background: linear-gradient(
+      transparent 18%,
+      var(--hl-wash) 18%,
+      var(--hl-wash) 92%,
+      transparent 92%
+    );
+    border-radius: 2px;
   }
 }
 
 /* -----------------------------------------------------------------------------
-   Surfaces & texture
+   Motion — every animation fires once, on a real state change.
    ----------------------------------------------------------------------------- */
 @layer components {
-  /* The ink masthead band. */
-  .masthead {
-    background-image: linear-gradient(180deg, var(--ink) 0%, var(--ink-2) 100%);
-  }
-
-  /* Review-deck card advance (fade + rise). Reduced-motion zeroes it globally. */
+  /* Review-deck card advance (fade + rise). */
   @keyframes review-in {
     from {
       opacity: 0;
@@ -319,11 +352,11 @@
     animation: review-in var(--dur-emphasis) var(--ease-quiet);
   }
 
-  /* Trace reveal — retrieval steps stream in, fade + rise (motion #2). */
+  /* Trace reveal — retrieval steps stream in, fade + rise. */
   @keyframes trace-in {
     from {
       opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(6px);
     }
     to {
       opacity: 1;
@@ -334,12 +367,42 @@
     animation: trace-in var(--dur-base) var(--ease-quiet) both;
   }
 
-  /* Provenance flash — a highlighter wash sweeps over the source page then fades. */
+  /* List/row entrance — fade + rise, staggered by the caller. */
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .animate-rise-in {
+    animation: rise-in var(--dur-base) var(--ease-quiet) both;
+  }
+
+  /* Card materialize — soft spring on upload cards / dialogs. */
+  @keyframes materialize {
+    from {
+      opacity: 0;
+      transform: scale(0.97) translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .animate-materialize {
+    animation: materialize 260ms var(--ease-spring) both;
+  }
+
+  /* Provenance flash — the amber wash breathes once over the source region. */
   @keyframes source-flash {
     0% {
       opacity: 0;
     }
-    18% {
+    25% {
       opacity: 1;
     }
     100% {
@@ -347,30 +410,78 @@
     }
   }
   .animate-source-flash {
-    animation: source-flash 900ms var(--ease-quiet);
+    animation: source-flash 600ms var(--ease-quiet);
   }
 
-  /* SourceGlow — a highlighter marker sweeps left→right over the cited region,
-     settling to a resting tint (signature motion #3). */
-  @keyframes source-sweep {
+  /* SourceGlow — the wash fades in over the cited region and settles.
+     The one emphasized moment in the product (240ms). */
+  @keyframes source-wash {
     from {
-      transform: scaleX(0);
-      opacity: 0.85;
+      opacity: 0;
     }
     to {
-      transform: scaleX(1);
       opacity: 1;
     }
   }
   .animate-source-sweep {
-    transform-origin: left center;
-    animation: source-sweep 520ms var(--ease-quiet) both;
+    animation: source-wash 240ms var(--ease-quiet) both;
   }
 
-  /* Subtle paper grain over a canvas-colored surface (tactile, not noisy). */
-  .paper-grain {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.16'/%3E%3C/svg%3E");
-    background-repeat: repeat;
+  /* Active pipeline segment — a shimmer that resolves when the stage does. */
+  @keyframes seg-shimmer {
+    from {
+      background-position: 150% 0;
+    }
+    to {
+      background-position: -50% 0;
+    }
+  }
+  .animate-seg-shimmer {
+    background-image: linear-gradient(90deg, transparent, var(--accent), transparent);
+    background-size: 200% 100%;
+    animation: seg-shimmer 1.1s linear infinite;
+  }
+
+  /* Stage-complete pop — a completed segment thickens once. */
+  @keyframes seg-pop {
+    50% {
+      transform: scaleY(1.8);
+    }
+  }
+  .animate-seg-pop {
+    animation: seg-pop 200ms var(--ease-spring);
+  }
+
+  /* Drawn check — "Filed" earns its checkmark (SVG stroke). */
+  @keyframes draw-check {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  .animate-draw-check {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: draw-check 320ms var(--ease-quiet) 80ms forwards;
+  }
+
+  /* Skeleton shimmer while content loads. */
+  @keyframes skeleton-shimmer {
+    from {
+      background-position: 150% 0;
+    }
+    to {
+      background-position: -50% 0;
+    }
+  }
+  .animate-skeleton {
+    background-image: linear-gradient(
+      90deg,
+      var(--surface-2) 25%,
+      var(--border) 50%,
+      var(--surface-2) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s linear infinite;
   }
 }
 
@@ -385,6 +496,7 @@
     background: var(--canvas);
     color: var(--text-1);
     font-family: var(--font-sans), system-ui, sans-serif;
+    font-size: 14px;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -400,7 +512,7 @@
   }
 }
 
-/* prefers-reduced-motion → opacity-only; no sweeps/transforms (FRONTEND.md). */
+/* prefers-reduced-motion → opacity-only; no movement, no shimmer loops. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
