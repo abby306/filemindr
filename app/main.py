@@ -47,6 +47,32 @@ app.include_router(classes_router)
 app.include_router(analytics_router)
 app.include_router(billing_router)
 
+
+@app.on_event("startup")
+def warmup_models() -> None:
+    """Pre-load the local embedder + reranker off the request path.
+
+    Both are lazy singletons that otherwise load on the first query (~30-60s
+    cold). A daemon thread warms them so that first answer is fast; failures
+    are swallowed — the lazy path still works as before. `WARMUP_MODELS=false`
+    skips it (memory-tight hosts, tests).
+    """
+    if not settings.warmup_models:
+        return
+
+    def _warm() -> None:
+        try:
+            from app.services import embeddings, reranking
+
+            embeddings._get_model()
+            reranking._get_model()
+        except Exception:  # pragma: no cover — warmup is best-effort
+            pass
+
+    import threading
+
+    threading.Thread(target=_warm, name="model-warmup", daemon=True).start()
+
 # Dev-only: serve the throwaway testing UI same-origin (no CORS) at /dev/. Inert in
 # any non-development env and when the (git-ignored) dev_ui/ directory is absent.
 _dev_ui = Path(__file__).resolve().parent.parent / "dev_ui"

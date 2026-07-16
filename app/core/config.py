@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     # turns this on. Usage metering records regardless (it feeds analytics).
     enforce_quotas: bool = False
 
+    # Pre-load the local embedding + reranker models in a background thread at
+    # startup, so the first query doesn't stall ~30-60s on a cold model load.
+    # Costs ~400MB RAM up front. Off by default (tests/CI must never load
+    # models); set WARMUP_MODELS=true in .env for a running server.
+    warmup_models: bool = False
+
     # CORS — origins allowed to call the API directly from a browser/native app
     # (comma-separated). Dev uses the Next.js same-origin rewrite, so this only
     # matters once the web/native client calls a different origin in prod.
