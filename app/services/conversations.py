@@ -296,9 +296,14 @@ def chat_stream(
     """Streaming variant of `chat`: yields the agent's step events, then persists.
 
     A generator (run by Starlette in a worker thread) that opens **its own session**,
-    forwards `synthesize_iter`'s events, then persists both messages + the trace and
+    forwards `synthesize_iter`'s events, then persists the assistant turn + trace and
     yields a final ``done`` event with the assistant `message_id` + citations. Assumes
     the caller has already validated the conversation/document scope.
+
+    The **user message is committed before synthesis starts**, so a client that
+    disconnects (or a synthesis failure) mid-stream never loses the question —
+    the turn survives in history and can be retried. Synthesis errors yield an
+    ``error`` event rather than silently ending the stream.
     """
     from app.services.synthesis import synthesize_iter  # local import avoids a cycle
 
@@ -311,17 +316,30 @@ def chat_stream(
             conversation_id = convo.id
         yield {"type": "conversation", "conversation_id": str(conversation_id)}
 
+        # History first (it must not include this turn), then durably record the
+        # question before any slow model work begins.
         history = load_history(db, account_id, conversation_id)
-        result = None
-        for event in synthesize_iter(
-            user_message, account_id, history=history, db=db, document_ids=document_ids
-        ):
-            if event["type"] == "result":
-                result = event["result"]
-            else:
-                yield event
-
         add_message(db, account_id, conversation_id, "user", user_message)
+        db.commit()
+
+        result = None
+        try:
+            for event in synthesize_iter(
+                user_message, account_id, history=history, db=db, document_ids=document_ids
+            ):
+                if event["type"] == "result":
+                    result = event["result"]
+                else:
+                    yield event
+        except Exception:
+            db.rollback()
+            yield {
+                "type": "error",
+                "conversation_id": str(conversation_id),
+                "message": "Answering failed — your question is saved; try again.",
+            }
+            return
+
         message_id = add_message(db, account_id, conversation_id, "assistant", result.answer)
         record_trace(db, account_id, message_id, result)
         _meter_query(db, account_id, user_id, conversation_id, message_id, result)

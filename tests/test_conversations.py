@@ -142,3 +142,27 @@ def test_chat_threads_document_ids(seeded_account, monkeypatch) -> None:
 
     conversations.chat(acct, "scoped question", document_ids=[scope])
     assert seen["document_ids"] == [scope]
+
+
+def test_chat_stream_persists_question_before_synthesis(seeded_account, monkeypatch) -> None:
+    """A synthesis failure (or client disconnect) must not lose the user's
+    question — it commits before any model work, and the stream ends with an
+    `error` event instead of dying silently."""
+    acct = seeded_account["personal_id"]
+
+    def exploding_iter(query, account_id, *, history=None, db=None, **kw):
+        yield {"type": "intent", "intent": "lexical"}
+        raise RuntimeError("model unavailable")
+
+    monkeypatch.setattr("app.services.synthesis.synthesize_iter", exploding_iter)
+
+    events = list(conversations.chat_stream(acct, "what is the total?"))
+    types = [e["type"] for e in events]
+    assert types[0] == "conversation"
+    assert "intent" in types
+    assert types[-1] == "error"
+    convo_id = uuid.UUID(events[0]["conversation_id"])
+
+    with SessionLocal() as db:
+        history = conversations.load_history(db, acct, convo_id)
+    assert history == [{"role": "user", "content": "what is the total?"}]

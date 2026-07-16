@@ -10,7 +10,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { FileText, MessageSquareText, X } from "lucide-react";
 
@@ -40,13 +39,27 @@ export function AskScreen({
   scopedDocumentId: string | null;
 }) {
   const { account, request } = useAccount();
-  const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data: history, isPending } = useMessages(conversationId);
-  const { data: scopedDoc } = useDocument(scopedDocumentId);
   const [session, setSession] = useState<Turn[] | null>(null);
   const [streaming, setStreaming] = useState(false);
+
+  // The conversation being shown. Held in state (seeded from the route) so a
+  // brand-new chat can adopt its freshly created id WITHOUT a router
+  // navigation — a navigation remounts this component mid-stream and wipes the
+  // optimistic thread (the send-from-new-chat vanishing-message bug).
+  const [activeId, setActiveId] = useState(conversationId);
+  // Real navigation (rail click, back/forward) → adopt the route's id. Render-
+  // time reset (React's sanctioned derive-from-props pattern), not an effect.
+  const [routeId, setRouteId] = useState(conversationId);
+  if (routeId !== conversationId) {
+    setRouteId(conversationId);
+    setActiveId(conversationId);
+    setSession(null);
+  }
+
+  const { data: history, isPending } = useMessages(activeId);
+  const { data: scopedDoc } = useDocument(scopedDocumentId);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const turns = useMemo(
@@ -69,7 +82,7 @@ export function AskScreen({
     });
 
   const send = async (text: string) => {
-    let convoId = conversationId;
+    let convoId = activeId;
     const isNew = !convoId;
     if (!convoId) {
       const created = await request<{ id: string }>("/api/v1/conversations", {
@@ -86,7 +99,13 @@ export function AskScreen({
     ]);
     setStreaming(true);
     if (isNew) {
-      router.replace(
+      // Shallow URL update — a router navigation would remount this screen
+      // and drop the streaming thread. The route prop stays null; activeId
+      // carries the truth until the next real navigation.
+      setActiveId(convoId);
+      window.history.replaceState(
+        null,
+        "",
         scopedDocumentId ? `/chat/${convoId}?doc=${scopedDocumentId}` : `/chat/${convoId}`,
       );
       queryClient.invalidateQueries({ queryKey: ["conversations", account.id] });
@@ -112,6 +131,9 @@ export function AskScreen({
               messageId: data.message_id as string,
               elapsedMs: Date.now() - started,
             }));
+          } else if (type === "error") {
+            // The backend saved the question; only the answer failed.
+            patchAssistant((a) => ({ ...a, status: "error" }));
           } else if (type !== "conversation") {
             patchAssistant((a) => ({ ...a, steps: [...a.steps, { type, data }] }));
           }
@@ -122,6 +144,7 @@ export function AskScreen({
     } finally {
       setStreaming(false);
       queryClient.invalidateQueries({ queryKey: ["conversations", account.id] });
+      queryClient.invalidateQueries({ queryKey: ["messages", account.id, convoId] });
     }
   };
 
@@ -130,7 +153,7 @@ export function AskScreen({
   return (
     <div className="flex h-full">
       <aside className="hidden w-64 shrink-0 overflow-y-auto border-r border-border bg-surface xl:block">
-        <ConversationList activeId={conversationId} onNavigate={clearSession} />
+        <ConversationList activeId={activeId} onNavigate={clearSession} />
       </aside>
 
       <section className="flex min-w-0 flex-1 flex-col">
@@ -140,12 +163,12 @@ export function AskScreen({
               Chats
             </summary>
             <div className="border-t border-border">
-              <ConversationList activeId={conversationId} onNavigate={clearSession} />
+              <ConversationList activeId={activeId} onNavigate={clearSession} />
             </div>
           </details>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {turns.length === 0 && !isPending ? (
+            {turns.length === 0 && (!activeId || !isPending) ? (
               <EmptyAsk />
             ) : (
               <>
