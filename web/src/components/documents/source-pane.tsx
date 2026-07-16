@@ -130,7 +130,7 @@ export function SourcePane({
             aria-label="Previous page"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
-            className="flex size-9 items-center justify-center rounded-md border border-border bg-surface text-text-2 transition-colors hover:bg-surface-2 disabled:opacity-40"
+            className="flex size-11 items-center justify-center rounded-md border border-border bg-surface text-text-2 transition-colors hover:bg-surface-2 disabled:opacity-40 sm:size-9"
           >
             <ChevronLeft aria-hidden className="size-4" />
           </button>
@@ -142,7 +142,7 @@ export function SourcePane({
             aria-label="Next page"
             disabled={page >= total}
             onClick={() => onPageChange(page + 1)}
-            className="flex size-9 items-center justify-center rounded-md border border-border bg-surface text-text-2 transition-colors hover:bg-surface-2 disabled:opacity-40"
+            className="flex size-11 items-center justify-center rounded-md border border-border bg-surface text-text-2 transition-colors hover:bg-surface-2 disabled:opacity-40 sm:size-9"
           >
             <ChevronRight aria-hidden className="size-4" />
           </button>

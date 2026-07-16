@@ -29,7 +29,8 @@ export function ProcessingDock() {
   if (count === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-[min(20rem,calc(100vw-2rem))]">
+    // bottom-20 on mobile clears the tab bar; lg gets the plain corner.
+    <div className="fixed bottom-20 right-4 z-40 w-[min(20rem,calc(100vw-2rem))] lg:bottom-4">
       {open ? (
         <div className="mb-2 overflow-hidden rounded-xl border border-border bg-surface/85 shadow-e3 backdrop-blur-md">
           <div className="flex items-center justify-between border-b border-border px-3 py-2">

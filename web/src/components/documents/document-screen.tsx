@@ -9,15 +9,17 @@
 
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CornerDownLeft, MessageSquareText } from "lucide-react";
+import { ArrowLeft, CornerDownLeft, FileText, MessageSquareText } from "lucide-react";
 
 import { PipelineFill } from "@/components/upload/pipeline-fill";
 import { SourcePane } from "@/components/documents/source-pane";
 import { ClassChip } from "@/components/ui/class-chip";
+import { Sheet } from "@/components/ui/sheet";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDocument, useDocumentFacts } from "@/features/documents/queries";
 import { isProcessing } from "@/features/archive/taxonomy";
+import { useMedia } from "@/lib/use-media";
 import type { DocumentCard } from "@/lib/api/types";
 
 export function DocumentScreen({
@@ -39,18 +41,43 @@ export function DocumentScreen({
   const [flashKey, setFlashKey] = useState(initialPage && !initialFact ? 1 : 0);
   const sourceRef = useRef<HTMLElement>(null);
 
+  // Below lg the source pane lives in a bottom sheet (opened by the "View
+  // source" button or any provenance jump); a citation arrival opens it too.
+  const isDesktop = useMedia("(min-width: 1024px)", true);
+  const [sourceOpen, setSourceOpen] = useState(!!initialPage || !!initialFact);
+
   // Page follows the user's navigation, else the cited fact's page, else ?p.
   const page =
     manualPage ?? targetFact?.page ?? (initialPage && initialPage > 0 ? initialPage : 1);
   const highlightBbox =
     targetFact && targetFact.page === page ? targetFact.bbox : null;
 
-  const jumpTo = useCallback((target: number | null) => {
-    if (!target || target < 1) return;
-    setManualPage(target);
-    setFlashKey((k) => k + 1);
-    sourceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  const jumpTo = useCallback(
+    (target: number | null) => {
+      if (!target || target < 1) return;
+      setManualPage(target);
+      setFlashKey((k) => k + 1);
+      if (isDesktop) {
+        sourceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        setSourceOpen(true);
+      }
+    },
+    [isDesktop],
+  );
+
+  const sourcePane = doc ? (
+    <SourcePane
+      documentId={doc.id}
+      filename={doc.original_filename}
+      mimeType={doc.mime_type}
+      pageCount={doc.page_count}
+      page={page}
+      onPageChange={setManualPage}
+      flashKey={flashKey}
+      highlightBbox={highlightBbox}
+    />
+  ) : null;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
@@ -66,27 +93,43 @@ export function DocumentScreen({
         <Skeleton className="h-[60vh] w-full" />
       ) : isError ? (
         <NotFound message={error instanceof Error ? error.message : undefined} />
-      ) : (
+      ) : isDesktop ? (
         <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start">
           <section
             ref={sourceRef}
-            className="order-2 lg:order-1 lg:sticky lg:top-6 lg:h-[calc(100dvh-9rem)]"
+            className="lg:sticky lg:top-6 lg:h-[calc(100dvh-9rem)]"
           >
-            <SourcePane
-              documentId={doc.id}
-              filename={doc.original_filename}
-              mimeType={doc.mime_type}
-              pageCount={doc.page_count}
-              page={page}
-              onPageChange={setManualPage}
-              flashKey={flashKey}
-              highlightBbox={highlightBbox}
-            />
+            {sourcePane}
           </section>
 
-          <section className="order-1 flex flex-col gap-7 lg:order-2">
+          <section className="flex flex-col gap-7">
             <Card doc={doc} onJump={jumpTo} />
           </section>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-7">
+          <button
+            type="button"
+            onClick={() => setSourceOpen(true)}
+            className="flex min-h-11 w-fit items-center gap-2 rounded-lg border border-border bg-surface px-3.5 type-subhead text-text-1 transition-colors hover:bg-surface-2"
+          >
+            <FileText aria-hidden className="size-4 text-text-3" />
+            View source
+            {doc.page_count ? (
+              <span className="type-data text-text-3">
+                {doc.page_count} {doc.page_count === 1 ? "page" : "pages"}
+              </span>
+            ) : null}
+          </button>
+          <Card doc={doc} onJump={jumpTo} />
+          <Sheet
+            open={sourceOpen}
+            onClose={() => setSourceOpen(false)}
+            title={doc.title?.trim() || doc.original_filename}
+            tall
+          >
+            <div className="h-full">{sourcePane}</div>
+          </Sheet>
         </div>
       )}
     </div>

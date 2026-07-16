@@ -29,7 +29,7 @@ export function RatingRow({ messageId }: { messageId: string }) {
         aria-pressed={choice === "up"}
         onClick={() => send("up")}
         className={clsx(
-          "flex size-7 items-center justify-center rounded-md transition-colors",
+          "flex size-11 items-center justify-center rounded-md transition-colors sm:size-7",
           choice === "up" ? "bg-ok/12 text-ok" : "text-text-3 hover:bg-surface-2 hover:text-text-1",
         )}
       >
@@ -41,7 +41,7 @@ export function RatingRow({ messageId }: { messageId: string }) {
         aria-pressed={choice === "down"}
         onClick={() => send("down")}
         className={clsx(
-          "flex size-7 items-center justify-center rounded-md transition-colors",
+          "flex size-11 items-center justify-center rounded-md transition-colors sm:size-7",
           choice === "down" ? "bg-danger/12 text-danger" : "text-text-3 hover:bg-surface-2 hover:text-text-1",
         )}
       >

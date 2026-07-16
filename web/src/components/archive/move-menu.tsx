@@ -47,7 +47,7 @@ export function MoveMenu({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={clsx(
-          "flex size-8 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-accent-text",
+          "flex size-11 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-accent-text sm:size-8",
           open && "bg-surface-2 text-accent-text",
         )}
       >

@@ -11,11 +11,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
-import { FileText, MessageSquareText, X } from "lucide-react";
+import { FileText, History, MessageSquareText, X } from "lucide-react";
 
 import { ConversationList } from "@/components/ask/conversation-list";
 import { Composer } from "@/components/ask/composer";
 import { MessageThread } from "@/components/ask/message-thread";
+import { Sheet } from "@/components/ui/sheet";
 import { useAccount } from "@/lib/account/account-context";
 import { streamSSE } from "@/lib/api/sse";
 import { useMessages } from "@/features/ask/queries";
@@ -149,6 +150,7 @@ export function AskScreen({
   };
 
   const clearSession = () => setSession(null);
+  const [railOpen, setRailOpen] = useState(false);
 
   return (
     <div className="flex h-full">
@@ -158,14 +160,24 @@ export function AskScreen({
 
       <section className="flex min-w-0 flex-1 flex-col">
         <div className="mx-auto flex h-full w-full max-w-3xl flex-col px-4 py-6 sm:px-6">
-          <details className="mb-4 rounded-lg border border-border bg-surface xl:hidden">
-            <summary className="flex min-h-11 cursor-pointer items-center px-4 type-subhead text-text-2">
-              Chats
-            </summary>
-            <div className="border-t border-border">
-              <ConversationList activeId={activeId} onNavigate={clearSession} />
-            </div>
-          </details>
+          {/* Narrow screens: the conversation rail lives in a bottom sheet. */}
+          <button
+            type="button"
+            onClick={() => setRailOpen(true)}
+            className="mb-4 flex min-h-11 w-fit items-center gap-2 rounded-lg border border-border bg-surface px-3.5 type-subhead text-text-2 transition-colors hover:bg-surface-2 hover:text-text-1 xl:hidden"
+          >
+            <History aria-hidden className="size-4" />
+            Chats
+          </button>
+          <Sheet open={railOpen} onClose={() => setRailOpen(false)} title="Chats">
+            <ConversationList
+              activeId={activeId}
+              onNavigate={() => {
+                setRailOpen(false);
+                clearSession();
+              }}
+            />
+          </Sheet>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             {turns.length === 0 && (!activeId || !isPending) ? (

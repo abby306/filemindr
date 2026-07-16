@@ -469,6 +469,21 @@
     animation: draw-check 320ms var(--ease-quiet) 80ms forwards;
   }
 
+  /* Bottom sheet entrance — slides up once, then rests. */
+  @keyframes sheet-up {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .animate-sheet-up {
+    animation: sheet-up var(--dur-sheet) var(--ease-quiet) both;
+  }
+
   /* Skeleton shimmer while content loads. */
   @keyframes skeleton-shimmer {
     from {

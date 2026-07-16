@@ -38,7 +38,7 @@ export function SegmentedControl<T extends string>({
             aria-label={seg.label}
             onClick={() => onChange(seg.value)}
             className={clsx(
-              "flex min-h-8 items-center gap-1.5 rounded-[6px] px-2.5 type-subhead transition-colors",
+              "flex min-h-11 items-center gap-1.5 rounded-[6px] px-2.5 type-subhead transition-colors sm:min-h-8",
               active
                 ? "bg-surface text-text-1 shadow-e1"
                 : "text-text-3 hover:text-text-1",

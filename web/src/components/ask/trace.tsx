@@ -74,7 +74,7 @@ export function Trace({
         type="button"
         aria-expanded={open}
         onClick={() => setManualOpen(!open)}
-        className="flex items-center gap-1.5 text-left type-data text-text-3 transition-colors hover:text-text-2"
+        className="flex min-h-11 items-center gap-1.5 text-left type-data text-text-3 transition-colors hover:text-text-2 sm:min-h-0"
       >
         {streaming ? (
           <>

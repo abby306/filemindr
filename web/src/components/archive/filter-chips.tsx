@@ -100,7 +100,7 @@ function SubfolderRow({ node, activeKey }: { node: FolderNode; activeKey: string
 }
 
 const CHIP_BASE =
-  "inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 type-subhead transition-colors";
+  "inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 type-subhead transition-colors sm:min-h-8";
 const CHIP_ACTIVE = "border-accent-300 bg-accent-50 text-accent-text";
 const CHIP_IDLE =
   "border-border bg-surface text-text-2 hover:bg-surface-2 hover:text-text-1";
@@ -212,7 +212,7 @@ function FolderChip({
             aria-label={`${cls.name} folder options`}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
-            className="flex size-5 items-center justify-center rounded-full hover:bg-accent-100"
+            className="flex size-8 items-center justify-center rounded-full hover:bg-accent-100 sm:size-5"
           >
             <MoreHorizontal aria-hidden className="size-3.5" />
           </button>
