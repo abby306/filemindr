@@ -53,12 +53,15 @@ export interface FolderNode {
  * whose parent isn't present are treated as top-level. Parents sort system-first
  * then by name (matching the API order); children by name.
  *
- * The archive only surfaces folders that actually hold documents: empty
- * subclasses are hidden, and a parent is shown only when it (or a child) has
- * documents. The full catalog (incl. empty classes) still lives elsewhere for
- * assignment/creation — this is a browse-view concern only.
+ * By default the browse view only surfaces folders that actually hold
+ * documents: empty subclasses are hidden, and a parent is shown only when it
+ * (or a child) has documents. Pass `includeEmpty` for assignment surfaces
+ * (the move-to-folder menu) where every class must be a valid target.
  */
-export function buildFolderTree(classes: ClassInfo[]): FolderNode[] {
+export function buildFolderTree(
+  classes: ClassInfo[],
+  { includeEmpty = false }: { includeEmpty?: boolean } = {},
+): FolderNode[] {
   const byId = new Map(classes.map((c) => [c.id, c]));
   const childrenOf = new Map<string, ClassInfo[]>();
   const roots: ClassInfo[] = [];
@@ -81,11 +84,13 @@ export function buildFolderTree(classes: ClassInfo[]): FolderNode[] {
       const allChildren = (childrenOf.get(cls.id) ?? []).sort(byName);
       const totalCount =
         cls.document_count + allChildren.reduce((n, c) => n + c.document_count, 0);
-      // Hide empty subclasses from the browse rail.
-      const children = allChildren.filter((c) => c.document_count > 0);
+      // Hide empty subclasses from the browse chips (not from assignment).
+      const children = includeEmpty
+        ? allChildren
+        : allChildren.filter((c) => c.document_count > 0);
       return { cls, children, totalCount };
     })
-    .filter((node) => node.totalCount > 0); // hide folders with no documents
+    .filter((node) => includeEmpty || node.totalCount > 0);
 }
 
 /** Resolve a URL folder segment to the filter + a stable selection key. */
@@ -124,18 +129,10 @@ export function filterKey(filter: FolderFilter): string {
 
 export const CLASS_FOLDER_ICON: LucideIcon = FolderClosed;
 
-/* -----------------------------------------------------------------------------
-   Category color — the archive's wayfinding system (FRONTEND: "file-type
-   color-tint per parent"). In the Ink & Manila identity these are richer, warm
-   folder colors (color that *means* a category), always paired with the folder
-   name so color is never the sole signal. Well-known top-level slugs get an
-   intentional color; anything else is assigned deterministically from the same
-   earthy palette so it still sits in the paper world.
-   ----------------------------------------------------------------------------- */
+/** Design v2: color no longer encodes folders — every category dot is the same
+ *  quiet neutral. Still referenced by the review/analytics screens; their
+ *  reworks remove the dots entirely, and this helper with them. */
 export function tintForSlug(slug: string): string {
-  // Design v2: color no longer encodes folders — every category dot/tab is the
-  // same quiet neutral (theme-aware token) until the per-screen reworks remove
-  // the dots entirely.
   void slug;
   return "var(--p-400)";
 }

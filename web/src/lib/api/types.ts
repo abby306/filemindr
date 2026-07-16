@@ -19,6 +19,12 @@ export type ReviewReason =
   | "ambiguous"
   | null;
 
+/** The document's primary class — its folder (`PrimaryClassOut`). */
+export interface PrimaryClassRef {
+  slug: string;
+  name: string | null;
+}
+
 /** Light list/ingest view — `DocumentOut`. */
 export interface DocumentSummary {
   id: string;
@@ -33,6 +39,7 @@ export interface DocumentSummary {
   language: string | null;
   page_count: number | null;
   created_at: string;
+  primary_class: PrimaryClassRef | null;
 }
 
 /** `DocumentListOut`. */

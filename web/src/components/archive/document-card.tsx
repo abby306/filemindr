@@ -12,13 +12,7 @@ import { formatDate, pageLabel } from "@/lib/format";
 import { isProcessing } from "@/features/archive/taxonomy";
 import type { DocumentSummary } from "@/lib/api/types";
 
-export function DocumentCard({
-  doc,
-}: {
-  doc: DocumentSummary;
-  /** Ignored since v2 (color no longer encodes folders); kept for callers. */
-  tint?: string;
-}) {
+export function DocumentCard({ doc }: { doc: DocumentSummary }) {
   const title = doc.title?.trim() || doc.original_filename;
   const showsFilename = title !== doc.original_filename;
   const pages = pageLabel(doc.page_count);

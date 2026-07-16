@@ -1,50 +1,35 @@
 "use client";
 
 /**
- * ArchiveScreen — the Finder-style archive: a folder rail (persistent on wide
- * screens, a disclosure on narrow ones) beside the document grid/list for the
- * selected folder. Documents drag onto folders to refile them (add a label;
- * the server owns add-vs-replace).
+ * ArchiveScreen — a dense, sortable document table as the primary view (the
+ * gallery of cards stays one toggle away). Folders are demoted to a filter-chip
+ * row; the search box filters the loaded pages instantly (title/filename/
+ * folder), on top of the server-side folder/status filters. Refiling moved from
+ * drag-and-drop to each row's "Move to folder…" menu (see MoveMenu).
  */
 
 import { useState } from "react";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragStartEvent,
-} from "@dnd-kit/core";
-import { FolderOpen, LayoutGrid, List } from "lucide-react";
+import { FolderOpen, LayoutGrid, Search, TableProperties } from "lucide-react";
 
 import { EmptyState } from "@/components/page-scaffold";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toast } from "@/components/ui/toast";
 import { DocumentCard } from "@/components/archive/document-card";
-import { DocumentRow } from "@/components/archive/document-row";
-import { DraggableDoc } from "@/components/archive/draggable-doc";
-import { FolderTree } from "@/components/archive/folder-tree";
-import {
-  useArchiveDocuments,
-  useClasses,
-  useRefile,
-} from "@/features/archive/queries";
-import {
-  filterKey,
-  resolveFolder,
-  tintForSlug,
-} from "@/features/archive/taxonomy";
+import { DocumentTable } from "@/components/archive/document-table";
+import { FilterChips } from "@/components/archive/filter-chips";
+import { useArchiveDocuments, useClasses } from "@/features/archive/queries";
+import { filterKey, resolveFolder } from "@/features/archive/taxonomy";
 import type { DocumentSummary } from "@/lib/api/types";
 
-type ViewMode = "gallery" | "list";
+type ViewMode = "table" | "gallery";
 
 export function ArchiveScreen({ folderSegment }: { folderSegment?: string }) {
   const { filter } = resolveFolder(folderSegment);
   const activeKey = filterKey(filter);
-  const [view, setView] = useState<ViewMode>("gallery");
+  const [view, setView] = useState<ViewMode>("table");
+  const [query, setQuery] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
 
   const { data: classData } = useClasses();
   const activeClass =
@@ -59,109 +44,77 @@ export function ArchiveScreen({ folderSegment }: { folderSegment?: string }) {
         ? "Needs review"
         : (activeClass?.name ?? filter.slug);
 
-  const tint =
-    filter.kind === "class"
-      ? tintForSlug(activeClass?.parent_slug ?? filter.slug)
-      : undefined;
-
-  const refile = useRefile();
-  const [dragging, setDragging] = useState<DocumentSummary | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  // Drag starts only after an 8px move, so a click still opens the document.
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  );
-
-  const onDragStart = (e: DragStartEvent) =>
-    setDragging((e.active.data.current?.doc as DocumentSummary) ?? null);
-
-  const onDragEnd = (e: DragEndEvent) => {
-    setDragging(null);
-    const doc = e.active.data.current?.doc as DocumentSummary | undefined;
-    const over = e.over?.data.current as { classId?: string; name?: string } | undefined;
-    if (!doc || !over?.classId) return;
-    // Move: the dropped folder becomes the document's primary (so it shows there —
-    // the archive browses by primary) while keeping any other labels (set_primary).
-    refile.mutate(
-      { documentId: doc.id, classId: over.classId, mode: "set_primary" },
-      { onSuccess: () => setToast(`Moved to ${over.name}`) },
-    );
-  };
-
   return (
-    <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-    <div className="flex min-h-full">
-      {/* Persistent folder rail */}
-      <aside className="hidden w-64 shrink-0 overflow-y-auto border-r border-border bg-surface xl:block">
-        <FolderTree activeKey={activeKey} />
-      </aside>
+    <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-6 sm:px-8 sm:py-8">
+      <header className="mb-4">
+        <p className="eyebrow mb-0.5">Archive</p>
+        <h1 className="type-title1 text-text-1">{title}</h1>
+      </header>
 
-      <section className="min-w-0 flex-1">
-        <div className="mx-auto flex w-full max-w-5xl flex-col px-4 py-6 sm:px-8 sm:py-8">
-          {/* Narrow-screen folder disclosure */}
-          <details className="mb-4 rounded-lg border border-border bg-surface xl:hidden">
-            <summary className="flex min-h-11 cursor-pointer items-center px-4 type-subhead text-text-2">
-              Folders
-            </summary>
-            <div className="border-t border-border">
-              <FolderTree activeKey={activeKey} />
-            </div>
-          </details>
+      <div className="mb-4">
+        <FilterChips activeKey={activeKey} />
+      </div>
 
-          <header className="mb-6 flex items-end justify-between gap-4">
-            <div className="flex items-center gap-3">
-              {tint ? (
-                <span
-                  aria-hidden
-                  className="mt-1 h-8 w-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: tint }}
-                />
-              ) : null}
-              <div>
-                <p className="eyebrow mb-0.5">Archive</p>
-                <h1 className="type-title1 text-text-1">{title}</h1>
-              </div>
-            </div>
-            <SegmentedControl<ViewMode>
-              ariaLabel="View mode"
-              value={view}
-              onChange={setView}
-              segments={[
-                { value: "gallery", label: "Gallery", icon: <LayoutGrid className="size-4" /> },
-                { value: "list", label: "List", icon: <List className="size-4" /> },
-              ]}
-            />
-          </header>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <label className="relative flex-1 sm:max-w-72">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-text-3"
+          />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter documents…"
+            aria-label="Filter documents by title, filename, or folder"
+            className="min-h-9 w-full rounded-md border border-border bg-surface pl-8 pr-3 type-subhead text-text-1 outline-none transition-colors placeholder:text-text-3 focus-visible:border-accent"
+          />
+        </label>
+        <SegmentedControl<ViewMode>
+          ariaLabel="View mode"
+          value={view}
+          onChange={setView}
+          segments={[
+            { value: "table", label: "Table", icon: <TableProperties className="size-4" /> },
+            { value: "gallery", label: "Gallery", icon: <LayoutGrid className="size-4" /> },
+          ]}
+        />
+      </div>
 
-          <DocumentResults filter={filter} view={view} tint={tint} />
-        </div>
-      </section>
-
-      <DragOverlay dropAnimation={null}>
-        {dragging ? (
-          <div className="flex items-center gap-2 rounded-lg border border-accent-300 bg-card px-3 py-2 shadow-e3">
-            <span aria-hidden className="size-2 rounded-[3px] bg-accent" />
-            <span className="truncate type-subhead text-text-1">
-              {dragging.title?.trim() || dragging.original_filename}
-            </span>
-          </div>
-        ) : null}
-      </DragOverlay>
+      <DocumentResults
+        filter={filter}
+        view={view}
+        query={query}
+        onMoved={(name) => setToast(`Moved to ${name}`)}
+      />
 
       <Toast open={!!toast} message={toast ?? ""} onDismiss={() => setToast(null)} />
     </div>
-    </DndContext>
   );
+}
+
+/** Instant client-side narrowing of the loaded pages (view concern only —
+ *  the server filters stay authoritative for what gets loaded). */
+function matches(doc: DocumentSummary, q: string): boolean {
+  const hay =
+    `${doc.title ?? ""} ${doc.original_filename} ${doc.primary_class?.name ?? ""}`.toLowerCase();
+  return q
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((term) => hay.includes(term));
 }
 
 function DocumentResults({
   filter,
   view,
-  tint,
+  query,
+  onMoved,
 }: {
   filter: ReturnType<typeof resolveFolder>["filter"];
   view: ViewMode;
-  tint?: string;
+  query: string;
+  onMoved: (folderName: string) => void;
 }) {
   const {
     data,
@@ -174,16 +127,16 @@ function DocumentResults({
   } = useArchiveDocuments(filter);
 
   if (isPending) {
-    return view === "gallery" ? (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-40 w-full" />
+    return view === "table" ? (
+      <div className="flex flex-col gap-px overflow-hidden rounded-lg border border-border">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-14 w-full rounded-none" />
         ))}
       </div>
     ) : (
-      <div className="flex flex-col gap-2">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-14 w-full" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 w-full" />
         ))}
       </div>
     );
@@ -204,9 +157,11 @@ function DocumentResults({
     );
   }
 
-  const docs = data.pages.flatMap((p) => p.items);
+  const loaded = data.pages.flatMap((p) => p.items);
+  const q = query.trim();
+  const docs = q ? loaded.filter((d) => matches(d, q)) : loaded;
 
-  if (docs.length === 0) {
+  if (loaded.length === 0) {
     return (
       <EmptyState
         icon={FolderOpen}
@@ -216,22 +171,29 @@ function DocumentResults({
     );
   }
 
+  if (docs.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-surface/50 px-6 py-12 text-center">
+        <p className="type-body text-text-2">
+          No loaded documents match “{q}”.
+        </p>
+        {hasNextPage ? (
+          <p className="mt-1 type-callout text-text-3">
+            More documents exist — load more below to widen the search.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {view === "gallery" ? (
+      {view === "table" ? (
+        <DocumentTable docs={docs} onMoved={onMoved} />
+      ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {docs.map((doc) => (
-            <DraggableDoc key={doc.id} id={doc.id} data={{ doc }}>
-              <DocumentCard doc={doc} tint={tint} />
-            </DraggableDoc>
-          ))}
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-border bg-card">
-          {docs.map((doc) => (
-            <DraggableDoc key={doc.id} id={doc.id} data={{ doc }}>
-              <DocumentRow doc={doc} tint={tint} />
-            </DraggableDoc>
+            <DocumentCard key={doc.id} doc={doc} />
           ))}
         </div>
       )}

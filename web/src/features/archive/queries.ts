@@ -31,7 +31,13 @@ export function useClasses() {
   return useQuery({
     queryKey: ["classes", account.id],
     queryFn: () => request<ClassInfo[]>("/api/v1/classes"),
-    select: (classes) => ({ classes, tree: buildFolderTree(classes) }),
+    // `tree` drives the browse chips (empty folders hidden); `fullTree` drives
+    // assignment surfaces like the move-to-folder menu (every class a target).
+    select: (classes) => ({
+      classes,
+      tree: buildFolderTree(classes),
+      fullTree: buildFolderTree(classes, { includeEmpty: true }),
+    }),
   });
 }
 
