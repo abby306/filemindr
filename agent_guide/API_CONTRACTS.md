@@ -22,6 +22,7 @@ List documents (paginated, filterable).
 - Query: `status?`, `class?`, `primary?` (bool), `q?` (text), `limit?`, `cursor?`
 - Res `200`: `{ items: [DocumentCard], next_cursor }`
 - `class` matches any label by default (recall). With `primary=true` it matches only documents whose **primary** class falls under that slug — one document → one folder (the archive browse view). Subclass-aware either way (a parent slug includes its children).
+- Each item carries `primary_class: { slug, name } | null` — the document's folder for list views (batch-loaded server-side; null until extraction assigns a class). Also present on the detail card.
 
 ### GET /documents/{id}
 - Res `200`: full `DocumentCard` (see schema below).

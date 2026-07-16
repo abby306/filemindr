@@ -154,6 +154,37 @@ def test_document_count_and_primary_filter_ignore_secondary_labels(client, seede
     assert [d["id"] for d in rpt_any["items"]] == [doc_id]
 
 
+def test_list_and_detail_carry_primary_class(client, seeded_account) -> None:
+    """`DocumentOut.primary_class` names the document's folder in list + detail
+    (the archive table's Folder column) without inflating the light list view."""
+    acct = seeded_account["personal_id"]
+    with SessionLocal() as db:
+        inv = Class(account_id=acct, slug="invoice", name="Invoice", is_system=True)
+        rpt = Class(account_id=acct, slug="report", name="Report", is_system=True)
+        labelled = Document(account_id=acct, source="web_upload", original_filename="i.pdf",
+                            file_hash=uuid.uuid4().hex, storage_path="/tmp/i.pdf", status="indexed")
+        bare = Document(account_id=acct, source="web_upload", original_filename="b.pdf",
+                        file_hash=uuid.uuid4().hex, storage_path="/tmp/b.pdf", status="received")
+        db.add_all([inv, rpt, labelled, bare])
+        db.flush()
+        db.add_all([
+            DocumentClass(account_id=acct, document_id=labelled.id, class_id=inv.id,
+                          confidence=0.9, is_primary=True),
+            DocumentClass(account_id=acct, document_id=labelled.id, class_id=rpt.id,
+                          confidence=0.4, is_primary=False),
+        ])
+        db.commit()
+        labelled_id, bare_id = str(labelled.id), str(bare.id)
+
+    h = _headers(seeded_account)
+    by_id = {d["id"]: d for d in client.get("/api/v1/documents", headers=h).json()["items"]}
+    assert by_id[labelled_id]["primary_class"] == {"slug": "invoice", "name": "Invoice"}
+    assert by_id[bare_id]["primary_class"] is None  # unextracted → no folder yet
+
+    detail = client.get(f"/api/v1/documents/{labelled_id}", headers=h).json()
+    assert detail["primary_class"] == {"slug": "invoice", "name": "Invoice"}
+
+
 def test_create_class_with_parent(client, seeded_account) -> None:
     h = _headers(seeded_account)
     parent_id = client.post("/api/v1/classes", headers=h, json={"name": "Financial"}).json()["id"]

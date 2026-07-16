@@ -14,6 +14,13 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class PrimaryClassOut(BaseModel):
+    """The document's primary class (its folder) — enough for a list view."""
+
+    slug: str
+    name: str | None = None
+
+
 class DocumentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -29,6 +36,7 @@ class DocumentOut(BaseModel):
     language: str | None
     page_count: int | None
     created_at: dt.datetime
+    primary_class: PrimaryClassOut | None = None
 
 
 class DocumentListOut(BaseModel):

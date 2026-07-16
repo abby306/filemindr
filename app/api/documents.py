@@ -40,6 +40,7 @@ from app.api.schemas import (
     DocumentOut,
     EntitiesCardOut,
     FactRegionOut,
+    PrimaryClassOut,
     TypedFactCardOut,
 )
 from app.core.config import get_settings
@@ -248,10 +249,31 @@ def list_documents(
     has_more = len(rows) > limit
     page = rows[:limit]
     next_cursor = _encode_cursor(page[-1]) if has_more and page else None
-    return DocumentListOut(
-        items=[DocumentOut.model_validate(d) for d in page],
-        next_cursor=next_cursor,
-    )
+    items = [DocumentOut.model_validate(d) for d in page]
+    primaries = _primary_classes(scope, [d.id for d in page])
+    for item in items:
+        item.primary_class = primaries.get(item.id)
+    return DocumentListOut(items=items, next_cursor=next_cursor)
+
+
+def _primary_classes(
+    scope: AccountScope, document_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, PrimaryClassOut]:
+    """Batch-load each document's primary class (its folder) for a list page."""
+    if not document_ids:
+        return {}
+    rows = scope.db.execute(
+        scope.select(DocumentClass)
+        .join(Class, Class.id == DocumentClass.class_id)
+        .where(
+            DocumentClass.document_id.in_(document_ids),
+            DocumentClass.is_primary,
+        )
+        .with_only_columns(DocumentClass.document_id, Class.slug, Class.name)
+    ).all()
+    return {
+        doc_id: PrimaryClassOut(slug=slug, name=name) for doc_id, slug, name in rows
+    }
 
 
 @router.get("/documents/{document_id}", response_model=DocumentCardOut)
@@ -635,6 +657,10 @@ def _build_card(scope: AccountScope, document: Document) -> DocumentCardOut:
         )
         for slug, name, confidence, assigned_by, parent_slug, is_primary in classes
     ]
+    card.primary_class = next(
+        (PrimaryClassOut(slug=c.slug, name=c.name) for c in card.classes if c.is_primary),
+        None,
+    )
     card.entities = entities
     card.dates = [
         DateCardOut(value=d.value, raw_text=d.raw_text, role=d.role) for d in dates
