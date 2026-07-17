@@ -153,6 +153,12 @@ export function Trace({
 
   // --- live activity card (while the answer is being worked out) -----------
   if (streaming) {
+    // Until the first backend event lands (initial retrieval), show the one
+    // thing that is honestly happening rather than an empty card.
+    const liveViews: StepView[] =
+      views.length > 0
+        ? views
+        : [{ icon: Search, label: "Searching your archive" }];
     return (
       <div className="mb-3 rounded-lg border border-border bg-surface px-3.5 py-3">
         <div className="flex items-center gap-2">
@@ -162,37 +168,35 @@ export function Trace({
             <span className="ml-auto type-data text-text-3">{elapsed}s</span>
           ) : null}
         </div>
-        {views.length > 0 ? (
-          <ol className="mt-2.5 flex flex-col gap-2">
-            {views.map((view, i) => {
-              const active = i === views.length - 1;
-              const Icon = active ? view.icon : Check;
-              return (
-                <li key={`${view.label}-${i}`} className="animate-trace-in flex items-center gap-2.5">
-                  <Icon
-                    aria-hidden
-                    className={clsx(
-                      "size-3.5 shrink-0",
-                      active ? "text-accent" : "text-ok",
-                    )}
-                    strokeWidth={active ? 1.75 : 2.5}
-                  />
-                  <span
-                    className={clsx(
-                      "shrink-0 type-caption",
-                      active ? "text-text-1" : "text-text-2",
-                    )}
-                  >
-                    {view.label}
-                  </span>
-                  {view.detail ? (
-                    <span className="truncate type-data text-text-3">{view.detail}</span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ol>
-        ) : null}
+        <ol className="mt-2.5 flex flex-col gap-2">
+          {liveViews.map((view, i) => {
+            const active = i === liveViews.length - 1;
+            const Icon = active ? view.icon : Check;
+            return (
+              <li key={`${view.label}-${i}`} className="animate-trace-in flex items-center gap-2.5">
+                <Icon
+                  aria-hidden
+                  className={clsx(
+                    "size-3.5 shrink-0",
+                    active ? "text-accent" : "text-ok",
+                  )}
+                  strokeWidth={active ? 1.75 : 2.5}
+                />
+                <span
+                  className={clsx(
+                    "shrink-0 type-caption",
+                    active ? "text-text-1" : "text-text-2",
+                  )}
+                >
+                  {view.label}
+                </span>
+                {view.detail ? (
+                  <span className="truncate type-data text-text-3">{view.detail}</span>
+                ) : null}
+              </li>
+            );
+          })}
+        </ol>
       </div>
     );
   }
