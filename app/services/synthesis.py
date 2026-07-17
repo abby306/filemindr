@@ -693,6 +693,7 @@ def synthesize_iter(
         lookups: list[str] = []
         pt = ct = 0
         result: SynthesisResult | None = None
+        off_focus_rejected = False  # the focus guard fires at most once
 
         for step in range(max_steps):
             allow_search = step < max_steps - 1  # force finish on the last turn
@@ -784,6 +785,47 @@ def synthesize_iter(
                 continue
 
             if turn.tool == "finish" or "answer" in turn.args:
+                # Focus guard (deterministic, once): a supported answer whose
+                # citations are ALL outside the conversation's documents, and
+                # which never names the other document, is a misattribution —
+                # the exact failure mode where a follow-up about doc A gets
+                # answered with doc B's fact as if it were A's. Reject it and
+                # make the model choose an honest path. Skipped on the forced
+                # final turn (nothing could follow a rejection).
+                if (
+                    allow_search
+                    and not off_focus_rejected
+                    and anchor_document_ids
+                    and not document_ids
+                    and turn.args.get("supported")
+                ):
+                    cited_docs = {
+                        facts.get(cid).document_id
+                        for cid in (turn.args.get("cited_fact_ids") or [])
+                        if facts.get(cid) is not None
+                    }
+                    answer_lower = str(turn.args.get("answer") or "").lower()
+                    names_cited_doc = any(
+                        (titles.get(d) or "").lower() in answer_lower
+                        for d in cited_docs
+                        if titles.get(d)
+                    )
+                    if cited_docs and cited_docs.isdisjoint(set(anchor_document_ids)) and not names_cited_doc:
+                        off_focus_rejected = True
+                        transcript.append({
+                            "role": "tool", "name": "finish",
+                            "response": {"rejected": (
+                                "Every citation is from a document OUTSIDE the "
+                                "conversation focus, and the answer does not name "
+                                "that document. Do ONE of: (1) answer from the "
+                                "conversation's documents — use read_page("
+                                "document_ref, page) if their facts lack the "
+                                "detail; (2) state plainly that the conversation's "
+                                "documents don't contain it; (3) keep the fact but "
+                                "explicitly name its source document in the answer."
+                            )},
+                        })
+                        continue
                 result = _build_result(turn.args, facts, titles, query=query, intent=intent,
                                        searches=searches, lookups=lookups, model=model,
                                        pt=pt, ct=ct, started=started)

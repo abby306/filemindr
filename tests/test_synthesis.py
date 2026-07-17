@@ -472,3 +472,93 @@ def test_read_page_unavailable_reports_and_continues(no_db, monkeypatch) -> None
     reading = next(e for e in events if e["type"] == "reading")
     assert reading["found"] == 0
     assert events[-1]["result"].supported is False
+
+
+# --- focus guard: off-focus finishes get one deterministic rejection ---------
+
+
+def test_off_focus_unattributed_finish_is_rejected_once(no_db, monkeypatch) -> None:
+    """Citing only a non-focus doc without naming it → rejected; the model then
+    reads the focus doc's page and answers from it."""
+    from app.services.catalog import CatalogDoc
+
+    focus_doc, other_doc = uuid.uuid4(), uuid.uuid4()
+    monkeypatch.setattr(
+        synthesis.catalog, "corpus_overview",
+        lambda db, account_id: {
+            "total_documents": 1,
+            "documents": [CatalogDoc(document_id=focus_doc, title="MDM Schema")],
+        },
+    )
+    # Initial pool: the tempting off-focus fact ranks first.
+    def fake_retrieve(query, account_id, *, db=None, k=5, document_ids=None, **kw):
+        if document_ids:  # anchored pass over the focus doc
+            return RetrievalResult(query=query, intent="semantic",
+                facts=[_fact("a1", "The schema groups 26 tables.", doc=focus_doc)],
+                doc_ids=[focus_doc])
+        return RetrievalResult(query=query, intent="semantic",
+            facts=[_fact("w1", "UUIDs are used for all primary keys.", doc=other_doc)],
+            doc_ids=[other_doc])
+
+    monkeypatch.setattr(synthesis.retrieval, "retrieve", fake_retrieve)
+    monkeypatch.setattr(
+        synthesis, "_page_text",
+        lambda db, account_id, d, page: "Meter: PK meter_id; FK customer_id." if d == focus_doc else None,
+    )
+    _script(monkeypatch, [
+        # 1st attempt: supported answer citing ONLY the off-focus doc, unnamed.
+        ModelTurn(tool="finish", args={
+            "answer": "UUIDs for all primary keys.", "cited_fact_ids": ["f2"], "supported": True,
+        }),
+        # After rejection: read the focus doc's page, then answer from it.
+        ModelTurn(tool="read_page", args={"document_ref": "d1", "page": 4}),
+        ModelTurn(tool="finish", args={
+            "answer": "Meter uses PK meter_id, FK customer_id.",
+            "cited_fact_ids": ["f3"], "supported": True,
+        }),
+    ])
+
+    events = list(synthesis.synthesize_iter(
+        "what keys?", uuid.uuid4(),
+        history=[{"role": "user", "content": "the mdm schema"}],
+        anchor_document_ids=[focus_doc],
+    ))
+    result = events[-1]["result"]
+    assert result.citations[0].document_id == focus_doc  # ended on the focus doc
+    assert any(e["type"] == "reading" for e in events)
+
+
+def test_off_focus_finish_accepted_when_it_names_the_document(no_db, monkeypatch) -> None:
+    from app.services.catalog import CatalogDoc
+
+    focus_doc, other_doc = uuid.uuid4(), uuid.uuid4()
+    monkeypatch.setattr(
+        synthesis.catalog, "corpus_overview",
+        lambda db, account_id: {
+            "total_documents": 1,
+            "documents": [CatalogDoc(document_id=focus_doc, title="MDM Schema")],
+        },
+    )
+    def fake_retrieve(query, account_id, *, db=None, k=5, document_ids=None, **kw):
+        facts = [_fact("w1", "UUIDs everywhere.", doc=other_doc)]
+        return RetrievalResult(query=query, intent="semantic", facts=facts, doc_ids=[other_doc])
+    monkeypatch.setattr(synthesis.retrieval, "retrieve", fake_retrieve)
+    # The other doc's title is known to the loop.
+    def fake_load_meta(db, account_id, doc_ids, titles):
+        titles[other_doc] = "StockSense Blueprint"
+    monkeypatch.setattr(synthesis, "_load_doc_meta", fake_load_meta)
+    _script(monkeypatch, [
+        ModelTurn(tool="finish", args={
+            "answer": "Your StockSense Blueprint uses UUIDs for all primary keys.",
+            "cited_fact_ids": ["f1"], "supported": True,
+        }),
+    ])
+
+    res = synthesis.synthesize(
+        "what keys?", uuid.uuid4(),
+        history=[{"role": "user", "content": "the mdm schema"}],
+        anchor_document_ids=[focus_doc],
+    )
+    # Named the source → accepted on the first turn, no rejection loop.
+    assert res.answer.startswith("Your StockSense Blueprint")
+    assert res.citations[0].document_id == other_doc
