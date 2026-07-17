@@ -391,6 +391,29 @@ def _doc_payload(added: list[tuple[str, catalog.CatalogDoc]]) -> list[dict]:
     ]
 
 
+def _source_summary(hits, titles, *, max_docs: int = 4, max_highlights: int = 3) -> dict:
+    """Display-ready transparency payload for a retrieval step: which documents
+    matched (title + per-doc hit count, best first) and a few of the matched
+    fact snippets — the SSE narration shows the user exactly what was read."""
+    counts: dict[uuid.UUID, int] = {}
+    for h in hits:
+        counts[h.document_id] = counts.get(h.document_id, 0) + 1
+    ordered = sorted(counts.items(), key=lambda kv: -kv[1])
+    highlights: list[str] = []
+    for h in hits[:max_highlights]:
+        text = " ".join((h.text or "").split())
+        if text:
+            highlights.append(text[:110] + ("…" if len(text) > 110 else ""))
+    return {
+        "sources": [
+            {"title": titles.get(doc_id) or "Untitled document", "facts": n}
+            for doc_id, n in ordered[:max_docs]
+        ],
+        "more_documents": max(0, len(ordered) - max_docs),
+        "highlights": highlights,
+    }
+
+
 def _load_doc_meta(db, account_id, doc_ids, titles) -> None:
     """Cache title for document ids not seen yet (account-scoped)."""
     for d in [d for d in doc_ids if d not in titles]:
@@ -516,6 +539,7 @@ def synthesize_iter(
             "type": "retrieved",
             "found": len(initial),
             "documents": len({h.document_id for h in first.facts}),
+            **_source_summary(first.facts, titles),
         }
 
         payload = {
@@ -561,7 +585,14 @@ def synthesize_iter(
                 added = docs.add(found)
                 transcript.append({"role": "tool", "name": "find_documents",
                                    "response": {"documents": _doc_payload(added)}})
-                yield {"type": "find_documents", "query": name, "found": len(added)}
+                yield {
+                    "type": "find_documents",
+                    "query": name,
+                    "found": len(added),
+                    "sources": [
+                        {"title": d.title or "Untitled document"} for d in found[:4]
+                    ],
+                }
                 continue
 
             if turn.tool == "search" and allow_search:
@@ -578,7 +609,12 @@ def synthesize_iter(
                 added = facts.add(res.facts)
                 transcript.append({"role": "tool", "name": "search",
                                    "response": {"candidates": _fact_payload(added, titles)}})
-                yield {"type": "searching", "query": rq, "found": len(added)}
+                yield {
+                    "type": "searching",
+                    "query": rq,
+                    "found": len(added),
+                    **_source_summary(res.facts, titles),
+                }
                 continue
 
             if turn.tool == "finish" or "answer" in turn.args:

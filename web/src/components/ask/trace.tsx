@@ -14,6 +14,7 @@ import {
   Brain,
   Check,
   Compass,
+  FileText,
   FolderSearch,
   Layers,
   Loader2,
@@ -42,10 +43,32 @@ const INTENT_LABEL: Record<string, string> = {
   metadata: "checking dates and details",
 };
 
+interface StepSource {
+  title: string;
+  facts?: number;
+}
+
 interface StepView {
   icon: LucideIcon;
   label: string;
   detail?: string;
+  /** The documents this step actually read (title + per-doc match count). */
+  sources?: StepSource[];
+  /** Documents beyond the listed ones ("+2 more"). */
+  moreDocuments?: number;
+  /** Trimmed matched-fact snippets — the key data the step surfaced. */
+  highlights?: string[];
+}
+
+/** The server's transparency payload (sources/highlights), when present. */
+function evidence(d: Record<string, unknown>): Pick<StepView, "sources" | "moreDocuments" | "highlights"> {
+  const sources = Array.isArray(d.sources) ? (d.sources as StepSource[]) : undefined;
+  const highlights = Array.isArray(d.highlights) ? (d.highlights as string[]) : undefined;
+  return {
+    sources: sources?.length ? sources : undefined,
+    moreDocuments: typeof d.more_documents === "number" && d.more_documents > 0 ? d.more_documents : undefined,
+    highlights: highlights?.length ? highlights : undefined,
+  };
 }
 
 function describe(step: TraceStep): StepView {
@@ -69,6 +92,7 @@ function describe(step: TraceStep): StepView {
           found != null
             ? `${found} fact${found === 1 ? "" : "s"} · ${d.documents} document${d.documents === 1 ? "" : "s"}`
             : undefined,
+        ...evidence(d),
       };
     case "thinking":
       return {
@@ -83,6 +107,7 @@ function describe(step: TraceStep): StepView {
         detail: [d.query, found != null ? `${found} found` : null]
           .filter(Boolean)
           .join(" · "),
+        ...evidence(d),
       };
     case "searching":
       return {
@@ -94,6 +119,7 @@ function describe(step: TraceStep): StepView {
         ]
           .filter(Boolean)
           .join(" · "),
+        ...evidence(d),
       };
     case "escalating":
       return { icon: Sparkles, label: "Double-checking with a stronger model" };
@@ -113,6 +139,39 @@ function toViews(steps: TraceStep[]): StepView[] {
     else views.push(view);
   }
   return views;
+}
+
+/** The proof under a retrieval step: file chips + the matched key data. */
+function Evidence({ view }: { view: StepView }) {
+  if (!view.sources && !view.highlights) return null;
+  return (
+    <div className="ml-6 flex min-w-0 flex-col gap-1">
+      {view.sources ? (
+        <div className="flex flex-wrap items-center gap-1">
+          {view.sources.map((s) => (
+            <span
+              key={s.title}
+              className="inline-flex max-w-64 items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5"
+            >
+              <FileText aria-hidden className="size-3 shrink-0 text-text-3" />
+              <span className="truncate type-caption font-normal text-text-2">{s.title}</span>
+              {s.facts != null && s.facts > 1 ? (
+                <span className="shrink-0 type-data text-[11px] text-text-3">×{s.facts}</span>
+              ) : null}
+            </span>
+          ))}
+          {view.moreDocuments ? (
+            <span className="type-caption text-text-3">+{view.moreDocuments} more</span>
+          ) : null}
+        </div>
+      ) : null}
+      {view.highlights?.map((h) => (
+        <p key={h} className="truncate type-data text-text-3">
+          “{h}”
+        </p>
+      ))}
+    </div>
+  );
 }
 
 function useElapsedSeconds(startedAt: number | undefined, running: boolean): number | null {
@@ -173,26 +232,29 @@ export function Trace({
             const active = i === liveViews.length - 1;
             const Icon = active ? view.icon : Check;
             return (
-              <li key={`${view.label}-${i}`} className="animate-trace-in flex items-center gap-2.5">
-                <Icon
-                  aria-hidden
-                  className={clsx(
-                    "size-3.5 shrink-0",
-                    active ? "text-accent" : "text-ok",
-                  )}
-                  strokeWidth={active ? 1.75 : 2.5}
-                />
-                <span
-                  className={clsx(
-                    "shrink-0 type-caption",
-                    active ? "text-text-1" : "text-text-2",
-                  )}
-                >
-                  {view.label}
+              <li key={`${view.label}-${i}`} className="animate-trace-in flex min-w-0 flex-col gap-1">
+                <span className="flex items-center gap-2.5">
+                  <Icon
+                    aria-hidden
+                    className={clsx(
+                      "size-3.5 shrink-0",
+                      active ? "text-accent" : "text-ok",
+                    )}
+                    strokeWidth={active ? 1.75 : 2.5}
+                  />
+                  <span
+                    className={clsx(
+                      "shrink-0 type-caption",
+                      active ? "text-text-1" : "text-text-2",
+                    )}
+                  >
+                    {view.label}
+                  </span>
+                  {view.detail ? (
+                    <span className="truncate type-data text-text-3">{view.detail}</span>
+                  ) : null}
                 </span>
-                {view.detail ? (
-                  <span className="truncate type-data text-text-3">{view.detail}</span>
-                ) : null}
+                <Evidence view={view} />
               </li>
             );
           })}
@@ -224,14 +286,17 @@ export function Trace({
       </button>
 
       {open ? (
-        <ol className="mt-2 flex flex-col gap-1.5 border-l border-border pl-3">
+        <ol className="mt-2 flex flex-col gap-2 border-l border-border pl-3">
           {views.map((view, i) => (
-            <li key={`${view.label}-${i}`} className="animate-trace-in flex items-center gap-2">
-              <view.icon aria-hidden className="size-3.5 shrink-0 text-accent" />
-              <span className="shrink-0 type-caption text-text-2">{view.label}</span>
-              {view.detail ? (
-                <span className="truncate type-data text-text-3">{view.detail}</span>
-              ) : null}
+            <li key={`${view.label}-${i}`} className="animate-trace-in flex min-w-0 flex-col gap-1">
+              <span className="flex items-center gap-2">
+                <view.icon aria-hidden className="size-3.5 shrink-0 text-accent" />
+                <span className="shrink-0 type-caption text-text-2">{view.label}</span>
+                {view.detail ? (
+                  <span className="truncate type-data text-text-3">{view.detail}</span>
+                ) : null}
+              </span>
+              <Evidence view={view} />
             </li>
           ))}
         </ol>

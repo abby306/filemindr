@@ -182,9 +182,13 @@ def test_synthesize_iter_emits_step_events(no_db, monkeypatch) -> None:
     assert types == ["intent", "retrieved", "thinking", "searching", "thinking", "result"]
     assert events[0]["intent"] == "semantic"
     assert events[1]["found"] == 1  # the initial pool
+    # Transparency payload: which documents matched + the matched key data.
+    assert events[1]["sources"] == [{"title": "Untitled document", "facts": 1}]
+    assert events[1]["highlights"] == ["Unrelated."]
     assert events[2]["step"] == 1
     searching = next(e for e in events if e["type"] == "searching")
     assert searching["query"] == "VAT amount"
+    assert searching["highlights"] == ["The VAT is PHP 20.25."]
     assert events[-1]["result"].supported is True  # final result rides the last event
 
 
