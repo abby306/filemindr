@@ -45,9 +45,6 @@ export function EmptyState({
       </span>
       <h2 className="mt-4 type-title2 text-text-1">{title}</h2>
       <p className="mt-1 max-w-sm type-callout text-text-2">{description}</p>
-      <span className="mt-5 rounded-full bg-surface-2 px-3 py-1 type-caption uppercase text-text-2">
-        Coming in a later milestone
-      </span>
     </div>
   );
 }
