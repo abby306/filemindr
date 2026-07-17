@@ -600,3 +600,51 @@ def test_off_focus_double_down_gets_server_attribution(no_db, monkeypatch) -> No
     assert res.answer.startswith("Note: this comes from “StockSense Blueprint”")
     assert "MDM Schema" in res.answer  # names what it is NOT from, too
     assert res.answer.endswith("UUIDs are used for all primary keys.")
+
+
+def test_escalated_off_focus_answer_gets_attribution_note(no_db, monkeypatch) -> None:
+    """The GPT-4o escalation path bypasses the finish guard — the exit-point
+    note must still attribute an off-focus escalated answer."""
+    from app.services.catalog import CatalogDoc
+
+    focus_doc, other_doc = uuid.uuid4(), uuid.uuid4()
+    other_fid = uuid.uuid4()
+    monkeypatch.setattr(
+        synthesis.catalog, "corpus_overview",
+        lambda db, account_id: {
+            "total_documents": 1,
+            "documents": [CatalogDoc(document_id=focus_doc, title="MDM Schema")],
+        },
+    )
+    def fake_retrieve(query, account_id, *, db=None, k=5, document_ids=None, **kw):
+        facts = [_fact("w1", "UUIDs are used for all primary keys.",
+                       doc=other_doc, fact_id=other_fid)]
+        return RetrievalResult(query=query, intent="semantic", facts=facts, doc_ids=[other_doc])
+    monkeypatch.setattr(synthesis.retrieval, "retrieve", fake_retrieve)
+    def fake_load_meta(db, account_id, doc_ids, titles):
+        titles.setdefault(other_doc, "StockSense Blueprint")
+        titles.setdefault(focus_doc, "MDM Schema")
+    monkeypatch.setattr(synthesis, "_load_doc_meta", fake_load_meta)
+    # Flash honestly misses...
+    _script(monkeypatch, [
+        ModelTurn(tool="finish", args={
+            "answer": "Not in the schema reference.", "cited_fact_ids": [], "supported": False,
+        }),
+    ])
+    # ...and GPT-4o resurrects the off-focus fact as a supported answer.
+    monkeypatch.setattr(
+        synthesis, "_openai_resynthesize",
+        lambda query, candidates, history: {
+            "answer": "UUIDs are used for all primary keys.",
+            "cited_fact_ids": ["f1"], "supported": True, "_pt": 10, "_ct": 5,
+        },
+    )
+
+    res = synthesis.synthesize(
+        "what keys?", uuid.uuid4(),
+        history=[{"role": "user", "content": "the mdm schema"}],
+        anchor_document_ids=[focus_doc],
+    )
+    assert res.escalated is True
+    assert res.answer.startswith("Note: this comes from “StockSense Blueprint”")
+    assert "MDM Schema" in res.answer

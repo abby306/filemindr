@@ -449,6 +449,29 @@ def _page_text(db, account_id: uuid.UUID, document_id: uuid.UUID, page: int) -> 
     return None
 
 
+def _apply_off_focus_note(result: "SynthesisResult", anchor_document_ids, titles) -> None:
+    """Server-written attribution: a supported answer citing ONLY documents
+    outside the conversation focus, without naming them, gets a plain-language
+    note prefixed — misattribution must not reach the user regardless of which
+    path (agentic finish or GPT-4o escalation) produced the answer."""
+    if not result.supported or not result.citations:
+        return
+    cited = {c.document_id for c in result.citations}
+    if not cited.isdisjoint(set(anchor_document_ids)):
+        return
+    answer_lower = (result.answer or "").lower()
+    if any((titles.get(d) or "").lower() in answer_lower for d in cited if titles.get(d)):
+        return
+    others = sorted({titles[d] for d in cited if titles.get(d)})
+    if not others:
+        return
+    focus_names = [titles[d] for d in anchor_document_ids if titles.get(d)]
+    prefix = "Note: this comes from “" + "” and “".join(others) + "”"
+    if focus_names:
+        prefix += f" — not from “{focus_names[0]}”, which we were discussing"
+    result.answer = prefix + ". " + (result.answer or "")
+
+
 def _contextual_query(query: str, history: list[dict] | None, *, max_turns: int = 2, max_chars: int = 240) -> str | None:
     """The query augmented with recent user turns, for a second retrieval pass.
 
@@ -644,6 +667,9 @@ def synthesize_iter(
                     query, account_id, db=db, k=8, document_ids=anchor_document_ids
                 )
                 anchored_facts = anchored.facts
+                # Anchor titles must be known even if the scoped pass found
+                # nothing — the off-focus note names the focus document.
+                _load_doc_meta(db, account_id, list(anchor_document_ids), titles)
             pool = _merge_hits(anchored_facts, pool, cap=_POOL_SIZE + 8)
             ctx_query = _contextual_query(query, history)
             if ctx_query:
@@ -826,21 +852,6 @@ def synthesize_iter(
                     })
                     continue
 
-                # If it still lands off-focus unattributed, the server writes
-                # the attribution itself — the user must never mistake another
-                # document's fact for the one under discussion.
-                if off_focus_docs:
-                    others = sorted({titles[d] for d in off_focus_docs if titles.get(d)})
-                    focus_names = [titles[d] for d in anchor_document_ids if titles.get(d)]
-                    if others:
-                        prefix = "Note: this comes from “" + "” and “".join(others) + "”"
-                        if focus_names:
-                            prefix += f" — not from “{focus_names[0]}”, which we were discussing"
-                        turn.args = {
-                            **turn.args,
-                            "answer": prefix + ". " + str(turn.args.get("answer") or ""),
-                        }
-
                 result = _build_result(turn.args, facts, titles, query=query, intent=intent,
                                        searches=searches, lookups=lookups, model=model,
                                        pt=pt, ct=ct, started=started)
@@ -865,6 +876,11 @@ def synthesize_iter(
             escalated = _try_escalate(query, facts, titles, history, result, started)
             if escalated is not None:
                 result = escalated
+
+        # Applied at the single exit so EVERY answer path is covered — the
+        # agentic finish and the GPT-4o escalation alike.
+        if anchor_document_ids and not document_ids:
+            _apply_off_focus_note(result, anchor_document_ids, titles)
 
         yield {"type": "result", "result": result}
     finally:
