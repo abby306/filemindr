@@ -562,3 +562,41 @@ def test_off_focus_finish_accepted_when_it_names_the_document(no_db, monkeypatch
     # Named the source → accepted on the first turn, no rejection loop.
     assert res.answer.startswith("Your StockSense Blueprint")
     assert res.citations[0].document_id == other_doc
+
+
+def test_off_focus_double_down_gets_server_attribution(no_db, monkeypatch) -> None:
+    """If the model repeats the off-focus finish after rejection, the server
+    prefixes the attribution itself — misattribution can't reach the user."""
+    from app.services.catalog import CatalogDoc
+
+    focus_doc, other_doc = uuid.uuid4(), uuid.uuid4()
+    monkeypatch.setattr(
+        synthesis.catalog, "corpus_overview",
+        lambda db, account_id: {
+            "total_documents": 1,
+            "documents": [CatalogDoc(document_id=focus_doc, title="MDM Schema")],
+        },
+    )
+    def fake_retrieve(query, account_id, *, db=None, k=5, document_ids=None, **kw):
+        facts = [_fact("w1", "UUIDs are used for all primary keys.", doc=other_doc)]
+        return RetrievalResult(query=query, intent="semantic", facts=facts, doc_ids=[other_doc])
+    monkeypatch.setattr(synthesis.retrieval, "retrieve", fake_retrieve)
+    def fake_load_meta(db, account_id, doc_ids, titles):
+        titles.setdefault(other_doc, "StockSense Blueprint")
+        titles.setdefault(focus_doc, "MDM Schema")
+    monkeypatch.setattr(synthesis, "_load_doc_meta", fake_load_meta)
+
+    same_finish = ModelTurn(tool="finish", args={
+        "answer": "UUIDs are used for all primary keys.",
+        "cited_fact_ids": ["f1"], "supported": True,
+    })
+    _script(monkeypatch, [same_finish, same_finish])  # doubles down after rejection
+
+    res = synthesis.synthesize(
+        "what keys?", uuid.uuid4(),
+        history=[{"role": "user", "content": "the mdm schema"}],
+        anchor_document_ids=[focus_doc],
+    )
+    assert res.answer.startswith("Note: this comes from “StockSense Blueprint”")
+    assert "MDM Schema" in res.answer  # names what it is NOT from, too
+    assert res.answer.endswith("UUIDs are used for all primary keys.")

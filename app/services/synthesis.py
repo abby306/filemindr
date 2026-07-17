@@ -785,20 +785,13 @@ def synthesize_iter(
                 continue
 
             if turn.tool == "finish" or "answer" in turn.args:
-                # Focus guard (deterministic, once): a supported answer whose
-                # citations are ALL outside the conversation's documents, and
-                # which never names the other document, is a misattribution —
-                # the exact failure mode where a follow-up about doc A gets
-                # answered with doc B's fact as if it were A's. Reject it and
-                # make the model choose an honest path. Skipped on the forced
-                # final turn (nothing could follow a rejection).
-                if (
-                    allow_search
-                    and not off_focus_rejected
-                    and anchor_document_ids
-                    and not document_ids
-                    and turn.args.get("supported")
-                ):
+                # Focus guard: a supported answer whose citations are ALL
+                # outside the conversation's documents, and which never names
+                # the other document, is a misattribution — the failure mode
+                # where a follow-up about doc A gets answered with doc B's fact
+                # as if it were A's.
+                off_focus_docs: set[uuid.UUID] = set()
+                if anchor_document_ids and not document_ids and turn.args.get("supported"):
                     cited_docs = {
                         facts.get(cid).document_id
                         for cid in (turn.args.get("cited_fact_ids") or [])
@@ -811,21 +804,43 @@ def synthesize_iter(
                         if titles.get(d)
                     )
                     if cited_docs and cited_docs.isdisjoint(set(anchor_document_ids)) and not names_cited_doc:
-                        off_focus_rejected = True
-                        transcript.append({
-                            "role": "tool", "name": "finish",
-                            "response": {"rejected": (
-                                "Every citation is from a document OUTSIDE the "
-                                "conversation focus, and the answer does not name "
-                                "that document. Do ONE of: (1) answer from the "
-                                "conversation's documents — use read_page("
-                                "document_ref, page) if their facts lack the "
-                                "detail; (2) state plainly that the conversation's "
-                                "documents don't contain it; (3) keep the fact but "
-                                "explicitly name its source document in the answer."
-                            )},
-                        })
-                        continue
+                        off_focus_docs = cited_docs
+
+                # First response: reject once and make the model choose an
+                # honest path (skipped on the forced final turn — nothing
+                # could follow a rejection there).
+                if off_focus_docs and allow_search and not off_focus_rejected:
+                    off_focus_rejected = True
+                    transcript.append({
+                        "role": "tool", "name": "finish",
+                        "response": {"rejected": (
+                            "Every citation is from a document OUTSIDE the "
+                            "conversation focus, and the answer does not name "
+                            "that document. Do ONE of: (1) answer from the "
+                            "conversation's documents — use read_page("
+                            "document_ref, page) if their facts lack the "
+                            "detail; (2) state plainly that the conversation's "
+                            "documents don't contain it; (3) keep the fact but "
+                            "explicitly name its source document in the answer."
+                        )},
+                    })
+                    continue
+
+                # If it still lands off-focus unattributed, the server writes
+                # the attribution itself — the user must never mistake another
+                # document's fact for the one under discussion.
+                if off_focus_docs:
+                    others = sorted({titles[d] for d in off_focus_docs if titles.get(d)})
+                    focus_names = [titles[d] for d in anchor_document_ids if titles.get(d)]
+                    if others:
+                        prefix = "Note: this comes from “" + "” and “".join(others) + "”"
+                        if focus_names:
+                            prefix += f" — not from “{focus_names[0]}”, which we were discussing"
+                        turn.args = {
+                            **turn.args,
+                            "answer": prefix + ". " + str(turn.args.get("answer") or ""),
+                        }
+
                 result = _build_result(turn.args, facts, titles, query=query, intent=intent,
                                        searches=searches, lookups=lookups, model=model,
                                        pt=pt, ct=ct, started=started)
