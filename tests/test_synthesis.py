@@ -399,3 +399,76 @@ def test_no_history_no_anchors_single_retrieval(no_db, monkeypatch) -> None:
     ])
     synthesis.synthesize("plain question", uuid.uuid4())
     assert calls == ["plain question"]  # no extra passes without context
+
+
+# --- read_page: recover detail that extraction dropped -----------------------
+
+
+def test_read_page_registers_citable_page(no_db, monkeypatch) -> None:
+    """When facts lack the detail, the agent reads the raw page and cites it
+    (document + page, no fact id → page-level provenance)."""
+    from app.services.catalog import CatalogDoc
+
+    doc_id = uuid.uuid4()
+    monkeypatch.setattr(
+        synthesis.catalog, "corpus_overview",
+        lambda db, account_id: {
+            "total_documents": 1,
+            "documents": [CatalogDoc(document_id=doc_id, title="MDM Schema")],
+        },
+    )
+    _stub_retrieve(monkeypatch, [_fact("k1", "The schema has 26 tables.", doc=doc_id)])
+    monkeypatch.setattr(
+        synthesis, "_page_text",
+        lambda db, account_id, d, page: (
+            "Meter table: PK meter_id UUID; FK customer_id → Customer."
+            if (d == doc_id and page == 4)
+            else None
+        ),
+    )
+    _script(monkeypatch, [
+        ModelTurn(tool="read_page", args={"document_ref": "d1", "page": 4}),
+        ModelTurn(tool="finish", args={
+            "answer": "Meter uses PK meter_id and FK customer_id.",
+            "cited_fact_ids": ["f2"], "supported": True,  # f2 = the read page
+        }),
+    ])
+
+    events = list(synthesis.synthesize_iter("what are the keys?", uuid.uuid4()))
+    reading = next(e for e in events if e["type"] == "reading")
+    assert reading["page"] == 4
+    assert reading["found"] == 1
+
+    result = events[-1]["result"]
+    assert result.supported is True
+    assert len(result.citations) == 1
+    assert result.citations[0].document_id == doc_id
+    assert result.citations[0].page == 4
+    assert result.citations[0].fact_id is None  # page-level provenance
+
+
+def test_read_page_unavailable_reports_and_continues(no_db, monkeypatch) -> None:
+    from app.services.catalog import CatalogDoc
+
+    doc_id = uuid.uuid4()
+    monkeypatch.setattr(
+        synthesis.catalog, "corpus_overview",
+        lambda db, account_id: {
+            "total_documents": 1,
+            "documents": [CatalogDoc(document_id=doc_id, title="MDM Schema")],
+        },
+    )
+    _stub_retrieve(monkeypatch, [_fact("k1", "High-level only.", doc=doc_id)])
+    monkeypatch.setattr(synthesis, "_page_text", lambda *a: None)
+    _script(monkeypatch, [
+        ModelTurn(tool="read_page", args={"document_ref": "d1", "page": 99}),
+        ModelTurn(tool="finish", args={
+            "answer": "The document doesn't detail that.",
+            "cited_fact_ids": [], "supported": False,
+        }),
+    ])
+
+    events = list(synthesis.synthesize_iter("keys?", uuid.uuid4()))
+    reading = next(e for e in events if e["type"] == "reading")
+    assert reading["found"] == 0
+    assert events[-1]["result"].supported is False

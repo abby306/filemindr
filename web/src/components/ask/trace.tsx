@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  BookOpen,
   Brain,
   Check,
   Compass,
@@ -32,6 +33,7 @@ const SHOWN = new Set([
   "thinking",
   "find_documents",
   "searching",
+  "reading",
   "escalating",
 ]);
 
@@ -121,6 +123,17 @@ function describe(step: TraceStep): StepView {
           .join(" · "),
         ...evidence(d),
       };
+    case "reading":
+      return {
+        icon: BookOpen,
+        label: "Reading the source page",
+        detail: [
+          typeof d.document === "string" ? d.document : null,
+          typeof d.page === "number" && d.page > 0 ? `p${d.page}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      };
     case "escalating":
       return { icon: Sparkles, label: "Double-checking with a stronger model" };
     default:
@@ -128,15 +141,19 @@ function describe(step: TraceStep): StepView {
   }
 }
 
-/** Collapse runs of identical labels (repeated "putting it together" turns). */
+/** Collapse runs of identical steps (repeated "putting it together" turns) —
+ *  but two searches/reads with different details each keep their row. */
 function toViews(steps: TraceStep[]): StepView[] {
   const views: StepView[] = [];
   for (const step of steps) {
     if (!SHOWN.has(step.type)) continue;
     const view = describe(step);
     const prev = views[views.length - 1];
-    if (prev && prev.label === view.label) views[views.length - 1] = view;
-    else views.push(view);
+    if (prev && prev.label === view.label && prev.detail === view.detail) {
+      views[views.length - 1] = view;
+    } else {
+      views.push(view);
+    }
   }
   return views;
 }

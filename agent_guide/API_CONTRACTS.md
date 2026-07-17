@@ -82,7 +82,7 @@ Send a user message; get a grounded answer.
 
 ### POST /conversations/{id}/messages/stream (SSE)
 Same request body; `text/event-stream` narrating the real work, then the answer:
-- `conversation` `{conversation_id}` → `intent` `{intent}` → `retrieved` (initial candidate pool) → `thinking` `{step}` (before **every** model turn — fills the otherwise-silent seconds) → any of `find_documents` / `searching` / `escalating` `{model}` → `done` (payload above + `conversation_id`) or `error` `{message}` (the user message is already saved).
+- `conversation` `{conversation_id}` → `intent` `{intent}` → `retrieved` (initial candidate pool) → `thinking` `{step}` (before **every** model turn — fills the otherwise-silent seconds) → any of `find_documents` / `searching` / `reading` `{document, page, found}` (the read_page tool: the agent reads a raw page when extracted facts lack the requested detail — the page becomes a citable candidate with page-level provenance) / `escalating` `{model}` → `done` (payload above + `conversation_id`) or `error` `{message}` (the user message is already saved).
 - Retrieval steps are **transparent**: `retrieved` and `searching` carry `{found, documents?, query?, sources: [{title, facts}], more_documents, highlights: [str]}` — the matched documents (best-first, per-doc hit counts) and trimmed matched-fact snippets, display-ready; `find_documents` carries `{query, found, sources: [{title}]}`. Clients render these so the user sees exactly which files were read and what matched.
 
 ### GET /conversations/{id}/messages — message history.

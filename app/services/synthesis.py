@@ -59,6 +59,10 @@ semantic "about" description. Returns document cards (with ids like d2).
 - search(query, document_ref, class): retrieve more candidate facts. Pass \
 document_ref (e.g. "d2") or class to scope the search to a specific document or \
 group the user pointed at.
+- read_page(document_ref, page): read the raw text of one page. Use it when the \
+extracted facts lack the detail the user asks for — table columns, key \
+definitions, exact wording, itemized lists. Facts show their page numbers and \
+document cards show page counts; the returned page is a citable candidate.
 - finish(answer, cited_fact_ids, supported): give the final answer.
 
 Guidance:
@@ -66,8 +70,10 @@ Guidance:
 - A follow-up question is usually still about the document(s) you cited in \
 your previous answers (when provided, "conversation_focus" names them). Answer \
 follow-ups from those documents' facts, using search(document_ref=...) to dig \
-deeper there. If those documents' facts do not contain the answer, SAY SO \
-plainly (e.g. "the schema reference doesn't list key columns"). Never present \
+deeper there. If those documents' facts do not contain the requested detail, \
+read the relevant pages with read_page before concluding it is absent; only \
+then SAY SO plainly (e.g. "the schema reference doesn't list key columns"). \
+Never present \
 a fact from an unrelated document as if it answered a question about the \
 conversation's document — if you bring in another document's fact, name that \
 document explicitly in the answer.
@@ -143,6 +149,9 @@ class _FactRegistry:
             self._by_key[hit.key] = short
             added.append((short, hit))
         return added
+
+    def id_for_key(self, key: str) -> str | None:
+        return self._by_key.get(key)
 
     def get(self, short_id: str) -> FactHit | None:
         return self._by_id.get(short_id)
@@ -244,7 +253,22 @@ def _tools(allow_search: bool):
             },
         ),
     )
-    return [types.Tool(function_declarations=[find, search, finish])]
+    read_page = types.FunctionDeclaration(
+        name="read_page",
+        description="Read the raw text of one page of a document — use when the "
+        "extracted facts lack the requested detail (table columns, key "
+        "definitions, exact wording, lists). The page becomes a citable "
+        "candidate.",
+        parameters=S(
+            type=types.Type.OBJECT,
+            properties={
+                "document_ref": S(type=types.Type.STRING, description="e.g. 'd2'"),
+                "page": S(type=types.Type.INTEGER, description="1-based page number"),
+            },
+            required=["document_ref", "page"],
+        ),
+    )
+    return [types.Tool(function_declarations=[find, search, read_page, finish])]
 
 
 def _to_contents(transcript: list[dict]):
@@ -397,6 +421,32 @@ def _doc_payload(added: list[tuple[str, catalog.CatalogDoc]]) -> list[dict]:
         }
         for short, doc in added
     ]
+
+
+_PAGE_TEXT_CHARS = 4000
+
+
+def _page_text(db, account_id: uuid.UUID, document_id: uuid.UUID, page: int) -> str | None:
+    """Raw text of one page (from the OCR-cache artifact), or None.
+
+    The read_page tool's seam: extraction distills a document into facts, but
+    dense reference material (schema tables, column lists) loses its detail —
+    reading the actual page recovers it. Account-scoped; None for a foreign or
+    unknown document, a missing cache artifact, or an empty/out-of-range page.
+    """
+    from app.services import ocr as ocr_service
+
+    document = db.get(Document, document_id)
+    if document is None or document.account_id != account_id:
+        return None
+    cached = ocr_service.load_cached_ocr(document.file_hash)
+    if cached is None:
+        return None
+    for p in cached.pages:
+        if p.page == page:
+            text = " ".join(p.text.split()) if p.text else ""
+            return text[:_PAGE_TEXT_CHARS] or None
+    return None
 
 
 def _contextual_query(query: str, history: list[dict] | None, *, max_turns: int = 2, max_chars: int = 240) -> str | None:
@@ -697,6 +747,40 @@ def synthesize_iter(
                     "found": len(added),
                     **_source_summary(res.facts, titles),
                 }
+                continue
+
+            if turn.tool == "read_page" and allow_search:
+                ref = turn.args.get("document_ref")
+                try:
+                    page_no = int(turn.args.get("page") or 0)
+                except (TypeError, ValueError):
+                    page_no = 0
+                doc_id = docs.resolve(ref) if ref else None
+                text = (
+                    _page_text(db, account_id, doc_id, page_no)
+                    if doc_id is not None and page_no >= 1
+                    else None
+                )
+                if doc_id is not None:
+                    _load_doc_meta(db, account_id, [doc_id], titles)
+                title = (titles.get(doc_id) if doc_id else None) or "the document"
+                if text is None:
+                    transcript.append({"role": "tool", "name": "read_page",
+                                       "response": {"error": "That page's text is not available."}})
+                    yield {"type": "reading", "document": title, "page": page_no, "found": 0}
+                    continue
+                hit = FactHit(
+                    key=f"page:{doc_id}:{page_no}", text=text,
+                    document_id=doc_id, source="page", page=page_no,
+                )
+                facts.add([hit])
+                short = facts.id_for_key(hit.key)
+                transcript.append({"role": "tool", "name": "read_page",
+                                   "response": {"candidates": [
+                                       {"id": short, "document": title,
+                                        "page": page_no, "text": text}
+                                   ]}})
+                yield {"type": "reading", "document": title, "page": page_no, "found": 1}
                 continue
 
             if turn.tool == "finish" or "answer" in turn.args:
