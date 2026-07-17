@@ -579,15 +579,18 @@ def synthesize_iter(
         # Conversation-aware pool: a follow-up's raw words often point at the
         # wrong document. Anchor on the docs cited in the previous answer and
         # add a context-augmented retrieval pass, so the conversation's actual
-        # subject is always represented among the candidates. (Skipped for
+        # subject is always represented among the candidates — anchored facts
+        # FIRST (models weight early candidates heavily). (Skipped for
         # document-scoped chats — the scope already pins retrieval.)
         pool = list(first.facts)
         if document_ids is None:
+            anchored_facts = []
             if anchor_document_ids:
                 anchored = retrieval.retrieve(
                     query, account_id, db=db, k=8, document_ids=anchor_document_ids
                 )
-                pool = _merge_hits(pool, anchored.facts, cap=_POOL_SIZE + 8)
+                anchored_facts = anchored.facts
+            pool = _merge_hits(anchored_facts, pool, cap=_POOL_SIZE + 8)
             ctx_query = _contextual_query(query, history)
             if ctx_query:
                 contextual = retrieval.retrieve(
@@ -613,6 +616,17 @@ def synthesize_iter(
             payload["scope"] = (
                 "The user's question is scoped to a specific document; answer from it."
             )
+        elif anchor_document_ids:
+            anchor_titles = [
+                titles[d] for d in anchor_document_ids if titles.get(d)
+            ]
+            if anchor_titles:
+                payload["conversation_focus"] = (
+                    "This conversation has been about: "
+                    + "; ".join(anchor_titles)
+                    + ". Follow-up questions refer to these documents unless the "
+                    "user clearly changed subject — answer from their facts."
+                )
         transcript: list[dict] = [
             {"role": "model" if t["role"] == "assistant" else "user", "text": t["content"]}
             for t in (history or [])

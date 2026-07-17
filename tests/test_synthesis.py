@@ -362,7 +362,8 @@ def test_follow_up_anchors_previously_cited_documents(no_db, monkeypatch) -> Non
     monkeypatch.setattr(synthesis.retrieval, "retrieve", fake_retrieve)
     _script(monkeypatch, [
         ModelTurn(tool="finish", args={
-            "answer": "meter_id + customer_id.", "cited_fact_ids": ["f2"], "supported": True,
+            # Anchored facts lead the pool, so the cited doc's fact is f1.
+            "answer": "meter_id + customer_id.", "cited_fact_ids": ["f1"], "supported": True,
         }),
     ])
 
