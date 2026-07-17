@@ -116,14 +116,14 @@ function toViews(steps: TraceStep[]): StepView[] {
 }
 
 function useElapsedSeconds(startedAt: number | undefined, running: boolean): number | null {
-  const [now, setNow] = useState(0);
+  // The clock first appears at "1s" — no synchronous set, no render-time Date.
+  const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     if (!running) return;
-    setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [running]);
-  if (!startedAt || !running || now === 0) return null;
+  if (!startedAt || !running || now == null) return null;
   return Math.max(0, Math.floor((now - startedAt) / 1000));
 }
 
