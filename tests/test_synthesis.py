@@ -625,12 +625,12 @@ def test_escalated_off_focus_answer_gets_attribution_note(no_db, monkeypatch) ->
         titles.setdefault(other_doc, "StockSense Blueprint")
         titles.setdefault(focus_doc, "MDM Schema")
     monkeypatch.setattr(synthesis, "_load_doc_meta", fake_load_meta)
-    # Flash honestly misses...
-    _script(monkeypatch, [
-        ModelTurn(tool="finish", args={
-            "answer": "Not in the schema reference.", "cited_fact_ids": [], "supported": False,
-        }),
-    ])
+    # Flash honestly misses — twice (the read-first nudge fires once, and the
+    # model insists it can't find it)...
+    miss = ModelTurn(tool="finish", args={
+        "answer": "Not in the schema reference.", "cited_fact_ids": [], "supported": False,
+    })
+    _script(monkeypatch, [miss, miss])
     # ...and GPT-4o resurrects the off-focus fact as a supported answer.
     monkeypatch.setattr(
         synthesis, "_openai_resynthesize",
@@ -648,3 +648,43 @@ def test_escalated_off_focus_answer_gets_attribution_note(no_db, monkeypatch) ->
     assert res.escalated is True
     assert res.answer.startswith("Note: this comes from “StockSense Blueprint”")
     assert "MDM Schema" in res.answer
+
+
+def test_unsupported_follow_up_nudged_to_read_before_giving_up(no_db, monkeypatch) -> None:
+    """An unsupported finish on an anchored follow-up, with no pages read yet,
+    is sent back once — the model then reads the page and answers."""
+    from app.services.catalog import CatalogDoc
+
+    focus_doc = uuid.uuid4()
+    monkeypatch.setattr(
+        synthesis.catalog, "corpus_overview",
+        lambda db, account_id: {
+            "total_documents": 1,
+            "documents": [CatalogDoc(document_id=focus_doc, title="MDM Schema")],
+        },
+    )
+    _stub_retrieve(monkeypatch, *([[_fact("k1", "High-level only.", doc=focus_doc)]] * 3))
+    monkeypatch.setattr(
+        synthesis, "_page_text",
+        lambda db, account_id, d, page: "Meter: PK meter_id; FK customer_id.",
+    )
+    _script(monkeypatch, [
+        ModelTurn(tool="finish", args={  # premature give-up
+            "answer": "The document doesn't list keys.", "cited_fact_ids": [], "supported": False,
+        }),
+        ModelTurn(tool="read_page", args={"document_ref": "d1", "page": 4}),
+        ModelTurn(tool="finish", args={
+            "answer": "Meter uses PK meter_id, FK customer_id.",
+            "cited_fact_ids": ["f2"], "supported": True,
+        }),
+    ])
+
+    events = list(synthesis.synthesize_iter(
+        "keys?", uuid.uuid4(),
+        history=[{"role": "user", "content": "the mdm schema"}],
+        anchor_document_ids=[focus_doc],
+    ))
+    result = events[-1]["result"]
+    assert any(e["type"] == "reading" for e in events)
+    assert result.supported is True
+    assert result.citations[0].document_id == focus_doc

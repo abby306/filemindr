@@ -720,6 +720,8 @@ def synthesize_iter(
         pt = ct = 0
         result: SynthesisResult | None = None
         off_focus_rejected = False  # the focus guard fires at most once
+        read_nudged = False  # the "read the page before giving up" nudge, once
+        pages_read = 0
 
         for step in range(max_steps):
             allow_search = step < max_steps - 1  # force finish on the last turn
@@ -801,6 +803,7 @@ def synthesize_iter(
                     document_id=doc_id, source="page", page=page_no,
                 )
                 facts.add([hit])
+                pages_read += 1
                 short = facts.id_for_key(hit.key)
                 transcript.append({"role": "tool", "name": "read_page",
                                    "response": {"candidates": [
@@ -831,6 +834,32 @@ def synthesize_iter(
                     )
                     if cited_docs and cited_docs.isdisjoint(set(anchor_document_ids)) and not names_cited_doc:
                         off_focus_docs = cited_docs
+
+                # Giving up on a follow-up without ever reading a page of the
+                # focus documents is premature — extraction routinely drops
+                # the fine detail follow-ups ask about. Send the model back
+                # once to actually read before it declares a miss.
+                if (
+                    allow_search
+                    and not read_nudged
+                    and pages_read == 0
+                    and anchor_document_ids
+                    and not document_ids
+                    and not turn.args.get("supported")
+                ):
+                    read_nudged = True
+                    transcript.append({
+                        "role": "tool", "name": "finish",
+                        "response": {"rejected": (
+                            "Before concluding the information is absent, use "
+                            "read_page(document_ref, page) on the most relevant "
+                            "page(s) of the conversation's documents — facts "
+                            "show page numbers and document cards show page "
+                            "counts. If the pages don't contain it either, "
+                            "finish with supported=false."
+                        )},
+                    })
+                    continue
 
                 # First response: reject once and make the model choose an
                 # honest path (skipped on the forced final turn — nothing
