@@ -242,6 +242,38 @@ def group_citations(citations) -> list[dict]:
     return [groups[k] for k in order]
 
 
+def _recent_citation_doc_ids(
+    db, account_id: uuid.UUID, conversation_id: uuid.UUID, *, max_docs: int = 3
+) -> list[uuid.UUID]:
+    """Documents cited by the conversation's last answered turn (best-first).
+
+    These anchor the next turn's retrieval: a follow-up usually stays on the
+    documents just discussed, even when its words alone would rank another
+    document higher. Empty when the conversation has no answered turn yet.
+    """
+    citations = db.execute(
+        select(RetrievalTrace.citations)
+        .join(Message, Message.id == RetrievalTrace.message_id)
+        .where(
+            RetrievalTrace.account_id == account_id,
+            Message.conversation_id == conversation_id,
+        )
+        .order_by(RetrievalTrace.created_at.desc())
+        .limit(1)
+    ).scalar()
+    doc_ids: list[uuid.UUID] = []
+    for c in citations or []:
+        try:
+            doc_id = uuid.UUID(str(c.get("document_id")))
+        except (ValueError, AttributeError, TypeError):
+            continue
+        if doc_id not in doc_ids:
+            doc_ids.append(doc_id)
+        if len(doc_ids) >= max_docs:
+            break
+    return doc_ids
+
+
 def chat(
     account_id: uuid.UUID,
     user_message: str,
@@ -271,8 +303,14 @@ def chat(
             conversation_id = convo.id
 
         history = load_history(db, account_id, conversation_id)
+        anchors = (
+            _recent_citation_doc_ids(db, account_id, conversation_id)
+            if document_ids is None
+            else []
+        )
         result = synthesize(
-            user_message, account_id, history=history, db=db, document_ids=document_ids
+            user_message, account_id, history=history, db=db,
+            document_ids=document_ids, anchor_document_ids=anchors or None,
         )
 
         add_message(db, account_id, conversation_id, "user", user_message)
@@ -322,13 +360,19 @@ def chat_stream(
         # History first (it must not include this turn), then durably record the
         # question before any slow model work begins.
         history = load_history(db, account_id, conversation_id)
+        anchors = (
+            _recent_citation_doc_ids(db, account_id, conversation_id)
+            if document_ids is None
+            else []
+        )
         add_message(db, account_id, conversation_id, "user", user_message)
         db.commit()
 
         result = None
         try:
             for event in synthesize_iter(
-                user_message, account_id, history=history, db=db, document_ids=document_ids
+                user_message, account_id, history=history, db=db,
+                document_ids=document_ids, anchor_document_ids=anchors or None,
             ):
                 if event["type"] == "result":
                     result = event["result"]

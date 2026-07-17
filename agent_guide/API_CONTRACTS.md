@@ -77,7 +77,8 @@ Send a user message; get a grounded answer.
 }
 ```
 - `citation_groups` collapses repeated same-document citations into one source (server-side; also on the SSE `done` event) so clients render one pill per document.
-- `supported=false` ⇒ answer states the documents don't contain it; `citations` may be empty.
+- `supported=false` ⇒ answer states the documents don’t contain it; `citations` may be empty.
+- Follow-up turns are **conversation-anchored**: retrieval for a new turn also searches the documents cited by the previous answer and a context-augmented form of the query (recent user turns folded in), so vague follow-ups stay on the conversation’s subject instead of drifting to whichever document matches their words.
 
 ### POST /conversations/{id}/messages/stream (SSE)
 Same request body; `text/event-stream` narrating the real work, then the answer:

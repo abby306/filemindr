@@ -63,6 +63,10 @@ group the user pointed at.
 
 Guidance:
 - Use the conversation history to interpret follow-ups and corrections.
+- A follow-up question is usually still about the document(s) you cited in \
+your previous answers. Prefer facts from those documents, and use \
+search(document_ref=...) to dig deeper there before switching to a different \
+document — switch only when the user clearly changes subject.
 - If the user names or hints at a document, use find_documents, then search scoped \
 to it.
 - Ground every claim in provided facts/summaries. cited_fact_ids MUST be ids from \
@@ -391,6 +395,43 @@ def _doc_payload(added: list[tuple[str, catalog.CatalogDoc]]) -> list[dict]:
     ]
 
 
+def _contextual_query(query: str, history: list[dict] | None, *, max_turns: int = 2, max_chars: int = 240) -> str | None:
+    """The query augmented with recent user turns, for a second retrieval pass.
+
+    A follow-up like "what about the keys?" carries none of the conversation's
+    vocabulary, so raw retrieval drifts to whatever document happens to match
+    those words. Folding the last user turns back in pulls the conversation's
+    actual subject into the candidate pool. None when there is no usable
+    context (no history → no second pass).
+    """
+    if not history:
+        return None
+    prior = [
+        t.get("content", "").strip()
+        for t in history
+        if t.get("role") == "user" and t.get("content", "").strip()
+    ]
+    if not prior:
+        return None
+    context = " ".join(prior[-max_turns:])[:max_chars].strip()
+    return f"{query} {context}" if context else None
+
+
+def _merge_hits(*hit_lists, cap: int) -> list:
+    """Concatenate hit lists, dedupe by hit key, keep first-seen order, cap."""
+    seen: set[str] = set()
+    merged = []
+    for hits in hit_lists:
+        for h in hits:
+            if h.key in seen:
+                continue
+            seen.add(h.key)
+            merged.append(h)
+            if len(merged) >= cap:
+                return merged
+    return merged
+
+
 def _source_summary(hits, titles, *, max_docs: int = 4, max_highlights: int = 3) -> dict:
     """Display-ready transparency payload for a retrieval step: which documents
     matched (title + per-doc hit count, best first) and a few of the matched
@@ -502,6 +543,7 @@ def synthesize_iter(
     model: str = MODEL,
     max_steps: int = _MAX_STEPS,
     document_ids: list[uuid.UUID] | None = None,
+    anchor_document_ids: list[uuid.UUID] | None = None,
 ):
     """The agentic loop as an event stream (for SSE), ending in the final result.
 
@@ -533,13 +575,33 @@ def synthesize_iter(
         )
         intent = first.intent
         yield {"type": "intent", "intent": intent}
-        _load_doc_meta(db, account_id, [h.document_id for h in first.facts], titles)
-        initial = facts.add(first.facts)
+
+        # Conversation-aware pool: a follow-up's raw words often point at the
+        # wrong document. Anchor on the docs cited in the previous answer and
+        # add a context-augmented retrieval pass, so the conversation's actual
+        # subject is always represented among the candidates. (Skipped for
+        # document-scoped chats — the scope already pins retrieval.)
+        pool = list(first.facts)
+        if document_ids is None:
+            if anchor_document_ids:
+                anchored = retrieval.retrieve(
+                    query, account_id, db=db, k=8, document_ids=anchor_document_ids
+                )
+                pool = _merge_hits(pool, anchored.facts, cap=_POOL_SIZE + 8)
+            ctx_query = _contextual_query(query, history)
+            if ctx_query:
+                contextual = retrieval.retrieve(
+                    ctx_query, account_id, db=db, k=_POOL_SIZE
+                )
+                pool = _merge_hits(pool, contextual.facts, cap=_POOL_SIZE + 8)
+
+        _load_doc_meta(db, account_id, [h.document_id for h in pool], titles)
+        initial = facts.add(pool)
         yield {
             "type": "retrieved",
             "found": len(initial),
-            "documents": len({h.document_id for h in first.facts}),
-            **_source_summary(first.facts, titles),
+            "documents": len({h.document_id for h in pool}),
+            **_source_summary(pool, titles),
         }
 
         payload = {
@@ -658,6 +720,7 @@ def synthesize(
     model: str = MODEL,
     max_steps: int = _MAX_STEPS,
     document_ids: list[uuid.UUID] | None = None,
+    anchor_document_ids: list[uuid.UUID] | None = None,
 ) -> SynthesisResult:
     """Answer `query` for `account_id` via the corpus-aware agentic loop.
 
@@ -668,6 +731,7 @@ def synthesize(
     for event in synthesize_iter(
         query, account_id, db=db, history=history, model=model,
         max_steps=max_steps, document_ids=document_ids,
+        anchor_document_ids=anchor_document_ids,
     ):
         if event["type"] == "result":
             result = event["result"]

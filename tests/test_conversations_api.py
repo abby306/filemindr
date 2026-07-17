@@ -196,7 +196,7 @@ def test_list_messages_foreign_conversation_404(client, seeded_account, monkeypa
 
 def _stub_synthesize_iter(monkeypatch, *, answer="streamed answer", supported=True):
     """Patch the streaming core to emit a fixed event sequence + final result."""
-    def fake_iter(query, account_id, *, history=None, db=None, document_ids=None):
+    def fake_iter(query, account_id, *, history=None, db=None, document_ids=None, **kw):
         yield {"type": "intent", "intent": "semantic"}
         yield {"type": "searching", "query": "vat", "found": 1}
         yield {"type": "result", "result": SynthesisResult(

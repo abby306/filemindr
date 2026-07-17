@@ -315,3 +315,86 @@ def test_gemini_turn_survives_one_transient_failure(monkeypatch) -> None:
     assert calls["n"] == 2
     assert turn.tool == "finish"
     assert turn.args == {"answer": "ok"}
+
+
+# --- conversation-aware retrieval (follow-up anchoring) ----------------------
+
+
+def test_contextual_query_builds_from_user_turns() -> None:
+    assert synthesis._contextual_query("q", None) is None
+    assert synthesis._contextual_query("q", [{"role": "assistant", "content": "hi"}]) is None
+
+    history = [
+        {"role": "user", "content": "meter data management db design"},
+        {"role": "assistant", "content": "use a CustomerMeter table"},
+        {"role": "user", "content": "customer and meter relations"},
+    ]
+    ctx = synthesis._contextual_query("what about the keys?", history)
+    assert ctx.startswith("what about the keys? ")
+    assert "meter data management" in ctx
+    assert "customer and meter relations" in ctx
+    assert "CustomerMeter" not in ctx  # assistant turns don't leak in
+
+    capped = synthesis._contextual_query("q", [{"role": "user", "content": "x" * 1000}])
+    assert len(capped) <= len("q ") + 240
+
+
+def test_follow_up_anchors_previously_cited_documents(no_db, monkeypatch) -> None:
+    """A vague follow-up whose words rank the WRONG document first still gets
+    the previously-cited document's facts into the pool, citable by the model."""
+    wrong_doc, right_doc = uuid.uuid4(), uuid.uuid4()
+    right_fid = uuid.uuid4()
+
+    calls = []
+
+    def fake_retrieve(query, account_id, *, db=None, k=5, document_ids=None, **kw):
+        calls.append({"query": query, "k": k, "document_ids": document_ids})
+        if document_ids:  # the anchored pass, scoped to the cited doc
+            facts = [_fact("r1", "CustomerMeter keys: meter_id, customer_id.",
+                           fact_id=right_fid, doc=right_doc)]
+        elif query.startswith("what about the keys?") and " meter" in query:
+            facts = [_fact("c1", "Assignment history lives in CustomerMeter.", doc=right_doc)]
+        else:  # the raw follow-up ranks the wrong doc first
+            facts = [_fact("w1", "UUIDs are used for all primary keys.", doc=wrong_doc)]
+        return RetrievalResult(query=query, intent="semantic", facts=facts,
+                               doc_ids=[f.document_id for f in facts])
+
+    monkeypatch.setattr(synthesis.retrieval, "retrieve", fake_retrieve)
+    _script(monkeypatch, [
+        ModelTurn(tool="finish", args={
+            "answer": "meter_id + customer_id.", "cited_fact_ids": ["f2"], "supported": True,
+        }),
+    ])
+
+    history = [
+        {"role": "user", "content": "meter data management system db relations"},
+        {"role": "assistant", "content": "via a CustomerMeter table"},
+    ]
+    res = synthesis.synthesize(
+        "what about the keys?", uuid.uuid4(),
+        history=history, anchor_document_ids=[right_doc],
+    )
+
+    # Three retrieval passes: raw query, anchored to the cited doc, contextual.
+    assert [bool(c["document_ids"]) for c in calls] == [False, True, False]
+    assert calls[1]["document_ids"] == [right_doc]
+    assert "meter data management" in calls[2]["query"]
+    # The pool held wrong-doc AND right-doc facts; the model cited the right one.
+    assert res.citations[0].document_id == right_doc
+    assert res.citations[0].fact_id == right_fid
+
+
+def test_no_history_no_anchors_single_retrieval(no_db, monkeypatch) -> None:
+    calls = []
+
+    def fake_retrieve(query, account_id, *, db=None, k=5, document_ids=None, **kw):
+        calls.append(query)
+        return RetrievalResult(query=query, intent="semantic",
+                               facts=[_fact("k1", "A fact.")], doc_ids=[])
+
+    monkeypatch.setattr(synthesis.retrieval, "retrieve", fake_retrieve)
+    _script(monkeypatch, [
+        ModelTurn(tool="finish", args={"answer": "x", "cited_fact_ids": [], "supported": False}),
+    ])
+    synthesis.synthesize("plain question", uuid.uuid4())
+    assert calls == ["plain question"]  # no extra passes without context
