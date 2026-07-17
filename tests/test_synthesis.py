@@ -238,3 +238,71 @@ def test_escalation_failure_falls_back_to_flash_answer(no_db, monkeypatch) -> No
     assert res.supported is False
     assert res.escalated is False
     assert res.answer == "Honest miss."
+
+
+# --- transient-error resilience on the Gemini seam ---------------------------
+
+
+def test_is_transient_gemini_matrix() -> None:
+    """Retry 429/5xx/timeouts; fail fast on real 4xx and unknown errors."""
+
+    def with_code(code: int) -> Exception:
+        exc = Exception("boom")
+        exc.code = code  # duck-typed like google.genai.errors.APIError
+        return exc
+
+    assert synthesis._is_transient_gemini(with_code(429))
+    assert synthesis._is_transient_gemini(with_code(503))
+    assert synthesis._is_transient_gemini(with_code(500))
+    assert synthesis._is_transient_gemini(TimeoutError())
+    assert synthesis._is_transient_gemini(ConnectionError())
+    assert not synthesis._is_transient_gemini(with_code(400))
+    assert not synthesis._is_transient_gemini(with_code(401))
+    assert not synthesis._is_transient_gemini(Exception("no code"))
+
+
+def test_gemini_turn_survives_one_transient_failure(monkeypatch) -> None:
+    """A mid-loop 503 used to kill the whole answer; now it retries through."""
+    from types import SimpleNamespace
+
+    calls = {"n": 0}
+
+    class Transient(Exception):
+        code = 503
+
+    fake_resp = SimpleNamespace(
+        usage_metadata=SimpleNamespace(prompt_token_count=5, candidates_token_count=2),
+        candidates=[
+            SimpleNamespace(
+                content=SimpleNamespace(
+                    parts=[
+                        SimpleNamespace(
+                            function_call=SimpleNamespace(
+                                name="finish", args={"answer": "ok"}
+                            )
+                        )
+                    ]
+                )
+            )
+        ],
+        text="",
+    )
+
+    def generate_content(**_kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise Transient("503 mid-loop")
+        return fake_resp
+
+    fake_client = SimpleNamespace(
+        models=SimpleNamespace(generate_content=generate_content)
+    )
+    monkeypatch.setattr(synthesis, "_get_client", lambda: fake_client)
+
+    turn = synthesis._gemini_turn(
+        [{"role": "user", "text": "q"}], allow_search=True, model="gemini-2.5-flash"
+    )
+
+    assert calls["n"] == 2
+    assert turn.tool == "finish"
+    assert turn.args == {"answer": "ok"}

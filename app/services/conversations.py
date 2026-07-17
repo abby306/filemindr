@@ -13,6 +13,7 @@ small rather than summarizing. Everything is `account_id`-scoped.
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import uuid
 
 from sqlalchemy import func, select
@@ -20,6 +21,8 @@ from sqlalchemy import func, select
 from app.db.models import Conversation, Message, RetrievalTrace
 from app.db.session import SessionLocal
 from app.services import usage
+
+logger = logging.getLogger(__name__)
 
 # Default conversation context: the last 12 turns (~6 exchanges).
 _HISTORY_TURNS = 12
@@ -332,6 +335,11 @@ def chat_stream(
                 else:
                     yield event
         except Exception:
+            # The stream turns this into a soft `error` event — without a log
+            # line the actual failure would leave no server-side trace at all.
+            logger.exception(
+                "chat synthesis failed (conversation %s)", conversation_id
+            )
             db.rollback()
             yield {
                 "type": "error",

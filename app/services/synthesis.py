@@ -34,6 +34,7 @@ import uuid
 from dataclasses import dataclass, field
 
 from app.core.config import get_settings
+from app.core.retry import with_retry
 from app.db.models import Document
 from app.db.session import SessionLocal
 from app.services import catalog, retrieval
@@ -258,6 +259,19 @@ def _to_contents(transcript: list[dict]):
     return contents
 
 
+def _is_transient_gemini(exc: Exception) -> bool:
+    """True for Gemini/transport errors worth retrying (429/5xx/timeouts).
+
+    Duck-typed on the status code (`google.genai.errors.APIError.code`) so a
+    provider-side hiccup mid-way through the agentic loop doesn't kill the
+    whole answer; real 4xx (auth, bad request) still fails fast.
+    """
+    if isinstance(exc, (TimeoutError, ConnectionError)):
+        return True
+    code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+    return code in (408, 429, 500, 502, 503, 504)
+
+
 def _gemini_turn(transcript: list[dict], *, allow_search: bool, model: str) -> ModelTurn:
     """Run one model turn and normalize the result to a `ModelTurn` (the seam)."""
     from google.genai import types
@@ -272,8 +286,14 @@ def _gemini_turn(transcript: list[dict], *, allow_search: bool, model: str) -> M
             )
         ),
     )
-    resp = _get_client().models.generate_content(
-        model=model, contents=_to_contents(transcript), config=config
+    settings = get_settings()
+    resp = with_retry(
+        lambda: _get_client().models.generate_content(
+            model=model, contents=_to_contents(transcript), config=config
+        ),
+        attempts=settings.retry_max_attempts,
+        base_delay=settings.retry_base_delay,
+        is_retryable=_is_transient_gemini,
     )
     usage = resp.usage_metadata
     pt = getattr(usage, "prompt_token_count", 0) or 0
