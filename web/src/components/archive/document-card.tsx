@@ -6,6 +6,7 @@
 
 import Link from "next/link";
 
+import { RetryButton } from "@/components/documents/retry-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PipelineFill } from "@/components/upload/pipeline-fill";
 import { formatDate, pageLabel } from "@/lib/format";
@@ -36,6 +37,7 @@ export function DocumentCard({ doc }: { doc: DocumentSummary }) {
           ) : (
             <StatusBadge status={doc.status} />
           )}
+          {doc.status === "failed" ? <RetryButton documentId={doc.id} /> : null}
           {pages ? <span className="type-caption text-text-3">{pages}</span> : null}
           <span className="type-caption text-text-3">{formatDate(doc.created_at)}</span>
         </div>

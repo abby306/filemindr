@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     storage_dir: str = "./storage"
     app_env: str = "development"
 
+    # Concurrent documents in the OCR→extraction→embedding pipeline. Uploads
+    # enqueue instantly; this many process at a time (each chain holds a DB
+    # connection and network/CPU resources for its whole run — unbounded, a
+    # 30-file drop exhausts the connection pool). 0 = run inline on the
+    # caller's thread (tests/CI: deterministic, synchronous).
+    pipeline_workers: int = 3
+
     # Plan-quota enforcement on the write paths (402 when a limit is hit).
     # Off by default: a self-hosted install is unlimited; the hosted product
     # turns this on. Usage metering records regardless (it feeds analytics).

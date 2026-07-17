@@ -12,6 +12,7 @@ import Link from "next/link";
 import { ArrowLeft, CornerDownLeft, FileText, MessageSquareText } from "lucide-react";
 
 import { PipelineFill } from "@/components/upload/pipeline-fill";
+import { RetryButton } from "@/components/documents/retry-button";
 import { SourcePane } from "@/components/documents/source-pane";
 import { ClassChip } from "@/components/ui/class-chip";
 import { Sheet } from "@/components/ui/sheet";
@@ -179,6 +180,15 @@ function Card({
           Ask about this document
         </Link>
       </header>
+
+      {doc.status === "failed" ? (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3">
+          <span className="type-subhead text-danger">
+            Processing failed for this document.
+          </span>
+          <RetryButton documentId={doc.id} label="Try again" />
+        </div>
+      ) : null}
 
       {doc.status === "needs_review" ? (
         <Link

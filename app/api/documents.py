@@ -55,7 +55,7 @@ from app.db.models import (
     Entity,
     TypedFact,
 )
-from app.services import ocr, rendering, usage
+from app.services import ocr, pipeline, rendering, reprocessing, usage
 from app.services.events import record_event
 from app.services.storage import FileTooLargeError, save_stream
 from app.services.taxonomy import expand_class_slugs, get_or_create_class
@@ -199,10 +199,52 @@ async def upload_document(
     scope.db.commit()
     scope.db.refresh(document)
 
-    background_tasks.add_task(ocr.run_ocr, document.id, scope.account_id)
+    # After the response: enqueue on the bounded pipeline pool (never run the
+    # chain on the request threadpool — see services/pipeline.py).
+    background_tasks.add_task(pipeline.submit, ocr.run_ocr, document.id, scope.account_id)
 
     response.status_code = status.HTTP_201_CREATED
     return DocumentOut.model_validate(document)
+
+
+@router.post("/documents/{document_id}/reprocess", response_model=DocumentOut)
+def reprocess_document_endpoint(
+    document_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    scope: AccountScope = Depends(get_current_account),
+) -> DocumentOut:
+    """Re-drive a failed or stalled document through the pipeline.
+
+    A `failed` document is reset to `received` (error cleared) right away so
+    the UI shows live pipeline progress again; the actual re-run happens on
+    the bounded pipeline pool. 409 for a document that is already `indexed`.
+    """
+    document = scope.db.scalar(scope.select(Document).where(Document.id == document_id))
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Document not found."},
+        )
+    if document.status == "indexed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "already_indexed",
+                "message": "This document has finished processing.",
+            },
+        )
+    if document.status == "failed":
+        document.status = "received"
+        document.error = None
+        scope.db.commit()
+        scope.db.refresh(document)
+
+    background_tasks.add_task(
+        pipeline.submit, reprocessing.reprocess_document, document.id, scope.account_id
+    )
+    out = DocumentOut.model_validate(document)
+    out.primary_class = _primary_classes(scope, [document.id]).get(document.id)
+    return out
 
 
 @router.get("/documents", response_model=DocumentListOut)

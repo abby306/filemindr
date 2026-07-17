@@ -16,6 +16,7 @@ import clsx from "clsx";
 
 import { PageThumb } from "@/components/archive/page-thumb";
 import { MoveMenu } from "@/components/archive/move-menu";
+import { RetryButton } from "@/components/documents/retry-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PipelineFill } from "@/components/upload/pipeline-fill";
 import { isProcessing } from "@/features/archive/taxonomy";
@@ -138,11 +139,16 @@ export function DocumentTable({
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  {isProcessing(doc.status) ? (
-                    <PipelineFill status={doc.status} />
-                  ) : (
-                    <StatusBadge status={doc.status} />
-                  )}
+                  <span className="flex items-center gap-2">
+                    {isProcessing(doc.status) ? (
+                      <PipelineFill status={doc.status} />
+                    ) : (
+                      <StatusBadge status={doc.status} />
+                    )}
+                    {doc.status === "failed" ? (
+                      <RetryButton documentId={doc.id} />
+                    ) : null}
+                  </span>
                 </td>
                 <td className="px-3 py-2 text-right type-data text-text-2">
                   {formatBytes(doc.byte_size) ?? "—"}
@@ -179,12 +185,15 @@ export function DocumentTable({
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
-                <div className="mt-0.5">
+                <div className="mt-0.5 flex items-center gap-2">
                   {isProcessing(doc.status) ? (
                     <PipelineFill status={doc.status} showTrack={false} />
                   ) : (
                     <StatusBadge status={doc.status} />
                   )}
+                  {doc.status === "failed" ? (
+                    <RetryButton documentId={doc.id} />
+                  ) : null}
                 </div>
               </div>
             </Link>

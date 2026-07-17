@@ -16,10 +16,13 @@ from app.core.config import get_settings
 settings = get_settings()
 
 # `pool_pre_ping` recycles connections silently dropped by the server, which the
-# native Postgres setup will do across idle periods.
+# native Postgres setup will do across idle periods. Overflow headroom covers
+# request bursts (an upload storm) on top of the bounded pipeline workers —
+# local Postgres allows 100 connections, so 5+25 stays comfortable.
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
+    max_overflow=25,
     future=True,
 )
 

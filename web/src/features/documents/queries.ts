@@ -3,10 +3,10 @@
 /** Document detail data. Shares the ["document", account, id] cache key with the
  *  review deck, so a doc fetched in one place is warm in the other. */
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAccount } from "@/lib/account/account-context";
-import type { DocumentCard, FactRegion } from "@/lib/api/types";
+import type { DocumentCard, DocumentSummary, FactRegion } from "@/lib/api/types";
 
 export function useDocument(documentId: string | null) {
   const { account, request } = useAccount();
@@ -14,6 +14,24 @@ export function useDocument(documentId: string | null) {
     queryKey: ["document", account.id, documentId],
     queryFn: () => request<DocumentCard>(`/api/v1/documents/${documentId}`),
     enabled: !!documentId,
+  });
+}
+
+/** Re-drive a failed/stalled document through the pipeline. The response is
+ *  the reset document (failed → received), so lists flip back to the live
+ *  pipeline immediately and the never-wait polling resumes. */
+export function useReprocess() {
+  const { account, request } = useAccount();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (documentId: string) =>
+      request<DocumentSummary>(`/api/v1/documents/${documentId}/reprocess`, {
+        method: "POST",
+      }),
+    onSuccess: (_data, documentId) => {
+      qc.invalidateQueries({ queryKey: ["documents", account.id] });
+      qc.invalidateQueries({ queryKey: ["document", account.id, documentId] });
+    },
   });
 }
 

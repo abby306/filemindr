@@ -8,6 +8,12 @@ committing; route tests that need persistence use `seeded_account`.
 
 from __future__ import annotations
 
+import os
+
+# Before any app import: run pipeline submissions inline so an upload's whole
+# OCR→extraction→embedding chain completes synchronously under TestClient.
+os.environ.setdefault("PIPELINE_WORKERS", "0")
+
 import uuid
 from collections.abc import Iterator
 
