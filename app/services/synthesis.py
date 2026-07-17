@@ -64,9 +64,13 @@ group the user pointed at.
 Guidance:
 - Use the conversation history to interpret follow-ups and corrections.
 - A follow-up question is usually still about the document(s) you cited in \
-your previous answers. Prefer facts from those documents, and use \
-search(document_ref=...) to dig deeper there before switching to a different \
-document — switch only when the user clearly changes subject.
+your previous answers (when provided, "conversation_focus" names them). Answer \
+follow-ups from those documents' facts, using search(document_ref=...) to dig \
+deeper there. If those documents' facts do not contain the answer, SAY SO \
+plainly (e.g. "the schema reference doesn't list key columns"). Never present \
+a fact from an unrelated document as if it answered a question about the \
+conversation's document — if you bring in another document's fact, name that \
+document explicitly in the answer.
 - If the user names or hints at a document, use find_documents, then search scoped \
 to it.
 - Ground every claim in provided facts/summaries. cited_fact_ids MUST be ids from \
@@ -622,10 +626,12 @@ def synthesize_iter(
             ]
             if anchor_titles:
                 payload["conversation_focus"] = (
-                    "This conversation has been about: "
+                    "This conversation is about: "
                     + "; ".join(anchor_titles)
-                    + ". Follow-up questions refer to these documents unless the "
-                    "user clearly changed subject — answer from their facts."
+                    + ". Answer the follow-up from these documents' facts. If "
+                    "they don't contain the answer, say so plainly. Do not "
+                    "substitute facts from other documents without explicitly "
+                    "naming the other document in your answer."
                 )
         transcript: list[dict] = [
             {"role": "model" if t["role"] == "assistant" else "user", "text": t["content"]}
