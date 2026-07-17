@@ -848,17 +848,46 @@ def synthesize_iter(
                     and not turn.args.get("supported")
                 ):
                     read_nudged = True
-                    transcript.append({
-                        "role": "tool", "name": "finish",
-                        "response": {"rejected": (
-                            "Before concluding the information is absent, use "
-                            "read_page(document_ref, page) on the most relevant "
-                            "page(s) of the conversation's documents — facts "
-                            "show page numbers and document cards show page "
-                            "counts. If the pages don't contain it either, "
-                            "finish with supported=false."
-                        )},
-                    })
+                    # Auto-read: don't make the model guess pages — open the
+                    # pages where the focus documents' own matched facts live
+                    # and hand over the raw text as citable candidates.
+                    anchor_set = set(anchor_document_ids)
+                    freq: dict[tuple[uuid.UUID, int], int] = {}
+                    for _sid, h in facts.items():
+                        if h.document_id in anchor_set and h.page and h.source != "page":
+                            freq[(h.document_id, h.page)] = freq.get((h.document_id, h.page), 0) + 1
+                    auto = []
+                    for (d, p), _n in sorted(freq.items(), key=lambda kv: -kv[1])[:2]:
+                        text = _page_text(db, account_id, d, p)
+                        if not text:
+                            continue
+                        hit = FactHit(key=f"page:{d}:{p}", text=text,
+                                      document_id=d, source="page", page=p)
+                        facts.add([hit])
+                        pages_read += 1
+                        title = titles.get(d) or "the document"
+                        auto.append({"id": facts.id_for_key(hit.key),
+                                     "document": title, "page": p, "text": text})
+                        yield {"type": "reading", "document": title, "page": p, "found": 1}
+                    message = (
+                        "Before concluding the information is absent, check the "
+                        "conversation's documents properly. "
+                        + (
+                            "The raw text of their most relevant page(s) has been "
+                            "read for you — see `candidates` below; answer from "
+                            "them, or read further pages with read_page(document_"
+                            "ref, page), or finish with supported=false."
+                            if auto
+                            else "Use read_page(document_ref, page) on the most "
+                            "relevant page(s) — facts show page numbers. If the "
+                            "pages don't contain it either, finish with "
+                            "supported=false."
+                        )
+                    )
+                    response: dict = {"rejected": message}
+                    if auto:
+                        response["candidates"] = auto
+                    transcript.append({"role": "tool", "name": "finish", "response": response})
                     continue
 
                 # First response: reject once and make the model choose an
