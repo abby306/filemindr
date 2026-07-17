@@ -177,9 +177,14 @@ def test_synthesize_iter_emits_step_events(no_db, monkeypatch) -> None:
     events = list(synthesis.synthesize_iter("vat?", uuid.uuid4()))
     types = [e["type"] for e in events]
 
-    assert types == ["intent", "searching", "result"]
+    # Real narration: candidates gathered, then a thinking beat before every
+    # model turn — the client shows live progress instead of dead air.
+    assert types == ["intent", "retrieved", "thinking", "searching", "thinking", "result"]
     assert events[0]["intent"] == "semantic"
-    assert events[1]["query"] == "VAT amount"
+    assert events[1]["found"] == 1  # the initial pool
+    assert events[2]["step"] == 1
+    searching = next(e for e in events if e["type"] == "searching")
+    assert searching["query"] == "VAT amount"
     assert events[-1]["result"].supported is True  # final result rides the last event
 
 

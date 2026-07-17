@@ -9,6 +9,8 @@ export interface AssistantTurn {
   role: "assistant";
   status: "streaming" | "done" | "error";
   steps: TraceStep[];
+  /** When the turn started (ms epoch) — drives the live elapsed clock. */
+  startedAt?: number;
   answer?: string;
   supported?: boolean;
   escalated?: boolean;

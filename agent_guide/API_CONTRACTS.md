@@ -79,6 +79,10 @@ Send a user message; get a grounded answer.
 - `citation_groups` collapses repeated same-document citations into one source (server-side; also on the SSE `done` event) so clients render one pill per document.
 - `supported=false` ⇒ answer states the documents don't contain it; `citations` may be empty.
 
+### POST /conversations/{id}/messages/stream (SSE)
+Same request body; `text/event-stream` narrating the real work, then the answer:
+- `conversation` `{conversation_id}` → `intent` `{intent}` → `retrieved` `{found, documents}` (initial candidate pool) → `thinking` `{step}` (before **every** model turn — fills the otherwise-silent seconds) → any of `find_documents` `{query, found}` / `searching` `{query, found}` / `escalating` `{model}` → `done` (payload above + `conversation_id`) or `error` `{message}` (the user message is already saved).
+
 ### GET /conversations/{id}/messages — message history.
 
 ## Email-in (webhook)

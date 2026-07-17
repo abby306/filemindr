@@ -92,11 +92,12 @@ export function AskScreen({
       convoId = created.id;
     }
 
+    const started = Date.now();
     const base = session ?? historyToTurns(history);
     setSession([
       ...base,
       { role: "user", content: text },
-      { role: "assistant", status: "streaming", steps: [] },
+      { role: "assistant", status: "streaming", steps: [], startedAt: started },
     ]);
     setStreaming(true);
     if (isNew) {
@@ -112,7 +113,6 @@ export function AskScreen({
       queryClient.invalidateQueries({ queryKey: ["conversations", account.id] });
     }
 
-    const started = Date.now();
     try {
       await streamSSE(`/api/v1/conversations/${convoId}/messages/stream`, {
         accountId: account.id,

@@ -3,7 +3,7 @@
 /** MessageThread — the conversation: user turns as quiet bubbles, assistant
  *  turns as a trace + grounded answer + grouped citations + rating. */
 
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 
 import { CitationPill } from "@/components/ask/citation-pill";
 import { RatingRow } from "@/components/ask/rating-row";
@@ -50,6 +50,7 @@ function AssistantMessage({
         elapsedMs={turn.elapsedMs}
         sourceCount={turn.citationGroups?.length}
         scopeLabel={scopeLabel}
+        startedAt={turn.startedAt}
       />
 
       {turn.status === "error" ? (
@@ -77,12 +78,7 @@ function AssistantMessage({
 
           {turn.messageId ? <RatingRow messageId={turn.messageId} /> : null}
         </>
-      ) : turn.status === "streaming" ? (
-        <p className="flex items-center gap-1.5 type-callout text-text-3">
-          <Loader2 aria-hidden className="size-3.5 motion-safe:animate-spin" />
-          Thinking…
-        </p>
-      ) : null}
+      ) : null /* while streaming, the Trace activity card carries progress */}
     </div>
   );
 }

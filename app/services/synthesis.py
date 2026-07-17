@@ -482,11 +482,15 @@ def synthesize_iter(
 ):
     """The agentic loop as an event stream (for SSE), ending in the final result.
 
-    Yields step events — ``{"type": "intent"|"find_documents"|"searching"|
-    "escalating", ...}`` — and finally ``{"type": "result", "result": SynthesisResult}``.
-    `synthesize()` drains this; the streaming endpoint forwards the events. Same
-    contract as `synthesize` otherwise (corpus overview + initial pool + history seed
-    the model; bounded loop with a forced finish; `document_ids` pins retrieval).
+    Yields step events — ``{"type": "intent"|"retrieved"|"thinking"|
+    "find_documents"|"searching"|"escalating", ...}`` — and finally
+    ``{"type": "result", "result": SynthesisResult}``. The narration is real,
+    not decorative: `retrieved` fires once the initial candidate pool is
+    gathered, and `thinking` before every model turn (the otherwise-silent
+    seconds), so a client can show live progress the whole way. `synthesize()`
+    drains this; the streaming endpoint forwards the events. Same contract as
+    `synthesize` otherwise (corpus overview + initial pool + history seed the
+    model; bounded loop with a forced finish; `document_ids` pins retrieval).
     """
     started = time.monotonic()
     own_session = db is None
@@ -508,6 +512,11 @@ def synthesize_iter(
         yield {"type": "intent", "intent": intent}
         _load_doc_meta(db, account_id, [h.document_id for h in first.facts], titles)
         initial = facts.add(first.facts)
+        yield {
+            "type": "retrieved",
+            "found": len(initial),
+            "documents": len({h.document_id for h in first.facts}),
+        }
 
         payload = {
             "query": query, "intent": intent,
@@ -531,6 +540,7 @@ def synthesize_iter(
 
         for step in range(max_steps):
             allow_search = step < max_steps - 1  # force finish on the last turn
+            yield {"type": "thinking", "step": step + 1}
             turn = _gemini_turn(transcript, allow_search=allow_search, model=model)
             pt += turn.prompt_tokens
             ct += turn.completion_tokens
