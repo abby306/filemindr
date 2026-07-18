@@ -450,24 +450,34 @@ def _page_text(db, account_id: uuid.UUID, document_id: uuid.UUID, page: int) -> 
 
 
 _TITLE_INSTRUCTION = (
-    "Write a title for this exchange: 3–6 words, plain language, no quotes, no "
-    "trailing punctuation. Name the subject itself (e.g. 'Meter DB key design', "
-    "'Meezan bank charges'), never the activity ('User asks about…')."
+    "Write a title for this conversation: 3–6 words, plain language, no quotes, "
+    "no trailing punctuation. Name the subject itself (e.g. 'Meter DB key "
+    "design', 'Meezan bank charges'), never the activity ('User asks about…'). "
+    "If a current title is provided and still fits the latest exchange, return "
+    "it unchanged; only rewrite it when the conversation's subject has moved on."
 )
 
 
-def generate_conversation_title(query: str, answer: str) -> str | None:
-    """Best-effort short title for a new conversation; None on any failure.
+def generate_conversation_title(
+    query: str, answer: str, *, current_title: str | None = None
+) -> str | None:
+    """Best-effort short conversation title; None on any failure.
 
-    One cheap Flash call after the first answer — callers keep the truncated
-    question as the fallback, so a provider hiccup costs nothing.
+    One cheap Flash call — at the first answer and periodically after, so the
+    label follows the conversation as it evolves. Callers keep the previous
+    title on failure, so a provider hiccup costs nothing.
     """
     from google.genai import types
 
+    parts = []
+    if current_title:
+        parts.append(f"Current title: {current_title}")
+    parts.append(f"Latest question: {query[:400]}")
+    parts.append(f"Latest answer: {answer[:400]}")
     try:
         resp = _get_client().models.generate_content(
             model=MODEL,
-            contents=f"Question: {query[:400]}\nAnswer: {answer[:400]}",
+            contents="\n".join(parts),
             config=types.GenerateContentConfig(
                 system_instruction=_TITLE_INSTRUCTION, temperature=0
             ),

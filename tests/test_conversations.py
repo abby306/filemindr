@@ -180,7 +180,7 @@ def test_first_answer_upgrades_title_from_fallback(seeded_account, monkeypatch) 
     monkeypatch.setattr("app.services.synthesis.synthesize", fake_synthesize)
     monkeypatch.setattr(
         "app.services.synthesis.generate_conversation_title",
-        lambda query, answer: "Meezan bank charges",
+        lambda query, answer, **kw: "Meezan bank charges",
     )
 
     _, convo_id, _ = conversations.chat(acct, "what were the bank charges on the account?")
@@ -190,7 +190,7 @@ def test_first_answer_upgrades_title_from_fallback(seeded_account, monkeypatch) 
     # A later turn never overwrites the generated title.
     monkeypatch.setattr(
         "app.services.synthesis.generate_conversation_title",
-        lambda query, answer: "Something else",
+        lambda query, answer, **kw: "Something else",
     )
     conversations.chat(acct, "and the FED portion?", conversation_id=convo_id)
     with SessionLocal() as db:
@@ -213,4 +213,33 @@ def test_title_generation_failure_keeps_fallback(seeded_account, monkeypatch) ->
         assert db.get(Conversation, convo_id).title == "what were the bank charges?"
     with SessionLocal() as db:
         db.delete(db.get(Conversation, convo_id))
+        db.commit()
+
+
+def test_title_refreshes_every_fourth_turn(seeded_account, monkeypatch) -> None:
+    acct = seeded_account["personal_id"]
+
+    def fake_synthesize(query, account_id, **kw):
+        return SynthesisResult(query=query, answer="a", supported=True)
+
+    monkeypatch.setattr("app.services.synthesis.synthesize", fake_synthesize)
+
+    calls: list[str | None] = []
+
+    def fake_title(query, answer, *, current_title=None):
+        calls.append(current_title)
+        return f"Title v{len(calls)}"
+
+    monkeypatch.setattr("app.services.synthesis.generate_conversation_title", fake_title)
+
+    _, cid, _ = conversations.chat(acct, "first question")      # turn 1 → titled
+    conversations.chat(acct, "second", conversation_id=cid)     # 2 → skip
+    conversations.chat(acct, "third", conversation_id=cid)      # 3 → skip
+    conversations.chat(acct, "fourth", conversation_id=cid)     # 4 → refreshed
+
+    # Two generations: the first from scratch, the refresh seeded with v1.
+    assert calls == [None, "Title v1"]
+    with SessionLocal() as db:
+        assert db.get(Conversation, cid).title == "Title v2"
+        db.delete(db.get(Conversation, cid))
         db.commit()

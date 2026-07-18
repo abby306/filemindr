@@ -30,7 +30,7 @@ def _no_conversation_title_generation(monkeypatch):
     (the fallback truncated-question title applies). Title tests override."""
     monkeypatch.setattr(
         "app.services.synthesis.generate_conversation_title",
-        lambda query, answer: None,
+        lambda query, answer, **kw: None,
     )
 
 

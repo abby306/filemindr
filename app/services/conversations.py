@@ -242,23 +242,33 @@ def group_citations(citations) -> list[dict]:
     return [groups[k] for k in order]
 
 
-def _ensure_title(db, conversation_id: uuid.UUID, query: str, answer: str) -> None:
-    """Upgrade a new conversation's title from the truncated-question fallback
-    to a short generated one (best-effort; the fallback stays on failure).
+def _refresh_title(db, conversation_id: uuid.UUID, query: str, answer: str) -> None:
+    """Keep the conversation's label meaningful as it evolves (best-effort).
 
-    Runs once: after the first answered turn the stored title no longer equals
-    the current question's truncation, so later turns skip it.
+    Generates after the first answered turn (replacing the truncated-question
+    fallback) and again every 4th turn, passing the current title so a
+    still-fitting one survives; any failure keeps the previous title.
     """
     convo = db.get(Conversation, conversation_id)
     if convo is None:
         return
-    fallback = _truncate(query, _TITLE_LIMIT)
-    if convo.title and convo.title != fallback:
+    answered = db.scalar(
+        select(func.count())
+        .select_from(Message)
+        .where(
+            Message.conversation_id == conversation_id,
+            Message.role == "assistant",
+        )
+    ) or 0
+    if answered != 1 and (answered == 0 or answered % 4 != 0):
         return
+
+    fallback = _truncate(query, _TITLE_LIMIT)
+    current = convo.title if convo.title and convo.title != fallback else None
     from app.services.synthesis import generate_conversation_title
 
-    title = generate_conversation_title(query, answer)
-    if title:
+    title = generate_conversation_title(query, answer, current_title=current)
+    if title and title != convo.title:
         convo.title = title
         db.commit()
 
@@ -341,7 +351,7 @@ def chat(
         record_trace(db, account_id, assistant_message_id, result)
         _meter_query(db, account_id, user_id, conversation_id, assistant_message_id, result)
         db.commit()
-        _ensure_title(db, conversation_id, user_message, result.answer)
+        _refresh_title(db, conversation_id, user_message, result.answer)
         return result, conversation_id, assistant_message_id
     finally:
         if own:
@@ -448,6 +458,6 @@ def chat_stream(
         # After `done` (never delaying the answer): upgrade a new chat's title
         # from the truncated question to a short generated one. The client
         # refetches the rail when the stream closes, so it lands right away.
-        _ensure_title(db, conversation_id, user_message, result.answer)
+        _refresh_title(db, conversation_id, user_message, result.answer)
     finally:
         db.close()
