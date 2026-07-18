@@ -28,7 +28,12 @@ export function MessageThread({
             </p>
           </div>
         ) : (
-          <AssistantMessage key={i} turn={turn} scopeLabel={scopeLabel} />
+          <AssistantMessage
+            key={i}
+            turn={turn}
+            scopeLabel={scopeLabel}
+            queryText={[...turns.slice(0, i)].reverse().find((t) => t.role === "user")?.content}
+          />
         ),
       )}
     </div>
@@ -38,9 +43,11 @@ export function MessageThread({
 function AssistantMessage({
   turn,
   scopeLabel,
+  queryText,
 }: {
   turn: AssistantTurn;
   scopeLabel?: string;
+  queryText?: string;
 }) {
   return (
     <div className="flex flex-col">
@@ -51,6 +58,7 @@ function AssistantMessage({
         sourceCount={turn.citationGroups?.length}
         scopeLabel={scopeLabel}
         startedAt={turn.startedAt}
+        queryText={queryText}
       />
 
       {turn.status === "error" ? (

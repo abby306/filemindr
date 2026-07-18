@@ -35,6 +35,21 @@ export function useReprocess() {
   });
 }
 
+/** Delete a document (its facts, labels, and stored file go with it). */
+export function useDeleteDocument() {
+  const { account, request } = useAccount();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (documentId: string) =>
+      request(`/api/v1/documents/${documentId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["documents", account.id] });
+      qc.invalidateQueries({ queryKey: ["classes", account.id] });
+      qc.invalidateQueries({ queryKey: ["mentionable-documents", account.id] });
+    },
+  });
+}
+
 /** Atomic facts with normalized bboxes — for click-to-source SourceGlow. */
 export function useDocumentFacts(documentId: string, enabled = true) {
   const { account, request } = useAccount();

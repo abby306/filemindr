@@ -1,13 +1,15 @@
 "use client";
 
-/** ConversationList — the chat rail: start a new chat or continue any past one. */
+/** ConversationList — the chat rail: start a new chat, continue any past one,
+ *  or delete one (hover/touch trash; deleting the open chat returns to /chat). */
 
 import Link from "next/link";
-import { Plus, MessageSquareText } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, MessageSquareText, Trash2 } from "lucide-react";
 import clsx from "clsx";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { useConversations } from "@/features/ask/queries";
+import { useConversations, useDeleteConversation } from "@/features/ask/queries";
 
 export function ConversationList({
   activeId,
@@ -16,7 +18,23 @@ export function ConversationList({
   activeId: string | null;
   onNavigate?: () => void;
 }) {
+  const router = useRouter();
   const { data, isPending } = useConversations();
+  const deleteConversation = useDeleteConversation();
+
+  const onDelete = (id: string, title: string | null) => {
+    if (!window.confirm(`Delete “${title || "this chat"}”? Its messages are removed for good.`)) {
+      return;
+    }
+    deleteConversation.mutate(id, {
+      onSuccess: () => {
+        if (id === activeId) {
+          onNavigate?.();
+          router.replace("/chat");
+        }
+      },
+    });
+  };
 
   return (
     <div className="flex h-full flex-col p-3">
@@ -44,36 +62,45 @@ export function ConversationList({
           {data!.map((c) => {
             const active = c.id === activeId;
             return (
-              <Link
-                key={c.id}
-                href={`/chat/${c.id}`}
-                onClick={onNavigate}
-                aria-current={active ? "page" : undefined}
-                className={clsx(
-                  "flex flex-col gap-0.5 rounded-md px-2.5 py-2 transition-colors",
-                  active ? "bg-accent-50" : "hover:bg-surface-2",
-                )}
-              >
-                <span className="flex items-center gap-2">
-                  <MessageSquareText
-                    aria-hidden
-                    className={clsx("size-3.5 shrink-0", active ? "text-accent" : "text-text-3")}
-                  />
-                  <span
-                    className={clsx(
-                      "truncate type-subhead",
-                      active ? "text-accent" : "text-text-1",
-                    )}
-                  >
-                    {c.title || "New chat"}
+              <div key={c.id} className="group/chat relative">
+                <Link
+                  href={`/chat/${c.id}`}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  className={clsx(
+                    "flex flex-col gap-0.5 rounded-md px-2.5 py-2 pr-9 transition-colors",
+                    active ? "bg-accent-50" : "hover:bg-surface-2",
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <MessageSquareText
+                      aria-hidden
+                      className={clsx("size-3.5 shrink-0", active ? "text-accent" : "text-text-3")}
+                    />
+                    <span
+                      className={clsx(
+                        "truncate type-subhead",
+                        active ? "text-accent" : "text-text-1",
+                      )}
+                    >
+                      {c.title || "New chat"}
+                    </span>
                   </span>
-                </span>
-                {c.preview ? (
-                  <span className="truncate pl-5 type-caption text-text-3">
-                    {c.preview}
-                  </span>
-                ) : null}
-              </Link>
+                  {c.preview ? (
+                    <span className="truncate pl-5 type-caption text-text-3">
+                      {c.preview}
+                    </span>
+                  ) : null}
+                </Link>
+                <button
+                  type="button"
+                  aria-label={`Delete chat: ${c.title || "New chat"}`}
+                  onClick={() => onDelete(c.id, c.title)}
+                  className="absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-text-3 opacity-100 transition-opacity hover:bg-danger/10 hover:text-danger lg:opacity-0 lg:group-hover/chat:opacity-100 lg:focus-visible:opacity-100"
+                >
+                  <Trash2 aria-hidden className="size-3.5" />
+                </button>
+              </div>
             );
           })}
         </nav>

@@ -158,8 +158,48 @@ function toViews(steps: TraceStep[]): StepView[] {
   return views;
 }
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** The question's meaningful words (plus the agent's own search queries) —
+ *  these get emphasized inside matched snippets so the user can SEE the match. */
+function matchTerms(queryText: string | undefined, steps: TraceStep[]): string[] {
+  const raw = [
+    queryText ?? "",
+    ...steps
+      .filter((s) => s.type === "searching" || s.type === "find_documents")
+      .map((s) => (typeof s.data.query === "string" ? s.data.query : "")),
+  ]
+    .join(" ")
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length >= 4);
+  return [...new Set(raw)].slice(0, 12);
+}
+
+/** Snippet text with the matched terms emphasized. */
+function Emphasize({ text, terms }: { text: string; terms: string[] }) {
+  if (terms.length === 0) return <>{text}</>;
+  const re = new RegExp(`(${terms.map(escapeRegex).join("|")})`, "gi");
+  const parts = text.split(re);
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <strong key={i} className="font-semibold text-text-1">
+            {part}
+          </strong>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 /** The proof under a retrieval step: file chips + the matched key data. */
-function Evidence({ view }: { view: StepView }) {
+function Evidence({ view, terms }: { view: StepView; terms: string[] }) {
   if (!view.sources && !view.highlights) return null;
   return (
     <div className="ml-6 flex min-w-0 flex-col gap-1">
@@ -184,7 +224,7 @@ function Evidence({ view }: { view: StepView }) {
       ) : null}
       {view.highlights?.map((h) => (
         <p key={h} className="truncate type-data text-text-3">
-          “{h}”
+          “<Emphasize text={h} terms={terms} />”
         </p>
       ))}
     </div>
@@ -210,6 +250,7 @@ export function Trace({
   sourceCount,
   scopeLabel,
   startedAt,
+  queryText,
 }: {
   steps: TraceStep[];
   streaming: boolean;
@@ -220,10 +261,13 @@ export function Trace({
   scopeLabel?: string;
   /** When this turn started — drives the live elapsed clock while streaming. */
   startedAt?: number;
+  /** The user's question — its words get emphasized inside matched snippets. */
+  queryText?: string;
 }) {
   const [manualOpen, setManualOpen] = useState<boolean | null>(null);
   const elapsed = useElapsedSeconds(startedAt, streaming);
   const views = toViews(steps);
+  const terms = matchTerms(queryText, steps);
 
   if (!streaming && views.length === 0) return null;
 
@@ -271,7 +315,7 @@ export function Trace({
                     <span className="truncate type-data text-text-3">{view.detail}</span>
                   ) : null}
                 </span>
-                <Evidence view={view} />
+                <Evidence view={view} terms={terms} />
               </li>
             );
           })}
@@ -281,7 +325,9 @@ export function Trace({
   }
 
   // --- finished: the quiet mono line, expandable back to the steps ---------
-  const open = manualOpen ?? false;
+  // Expanded by default — the retrieval story is a first-class part of the
+  // answer; the mono line collapses it for anyone who wants quiet.
+  const open = manualOpen ?? true;
   const summary = [
     `searched ${scopeLabel ?? "your archive"}`,
     sourceCount ? `${sourceCount} source${sourceCount === 1 ? "" : "s"}` : null,
@@ -313,7 +359,7 @@ export function Trace({
                   <span className="truncate type-data text-text-3">{view.detail}</span>
                 ) : null}
               </span>
-              <Evidence view={view} />
+              <Evidence view={view} terms={terms} />
             </li>
           ))}
         </ol>

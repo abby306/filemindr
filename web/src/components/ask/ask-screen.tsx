@@ -82,7 +82,7 @@ export function AskScreen({
       return next;
     });
 
-  const send = async (text: string) => {
+  const send = async (text: string, mentionIds: string[] = []) => {
     let convoId = activeId;
     const isNew = !convoId;
     if (!convoId) {
@@ -116,9 +116,15 @@ export function AskScreen({
     try {
       await streamSSE(`/api/v1/conversations/${convoId}/messages/stream`, {
         accountId: account.id,
-        json: scopedDocumentId
-          ? { content: text, scope: "document", document_id: scopedDocumentId }
-          : { content: text },
+        json: {
+          content: text,
+          // URL scope (?doc=) and @-mentions both pin retrieval; the server
+          // merges them and treats any pinned document as document scope.
+          ...(scopedDocumentId
+            ? { scope: "document", document_id: scopedDocumentId }
+            : {}),
+          ...(mentionIds.length > 0 ? { document_ids: mentionIds } : {}),
+        },
         onEvent: (type, data) => {
           if (type === "done") {
             patchAssistant((a) => ({

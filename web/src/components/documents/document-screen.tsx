@@ -9,7 +9,8 @@
 
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CornerDownLeft, FileText, MessageSquareText } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, CornerDownLeft, FileText, MessageSquareText, Trash2 } from "lucide-react";
 
 import { PipelineFill } from "@/components/upload/pipeline-fill";
 import { RetryButton } from "@/components/documents/retry-button";
@@ -18,7 +19,7 @@ import { ClassChip } from "@/components/ui/class-chip";
 import { Sheet } from "@/components/ui/sheet";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDocument, useDocumentFacts } from "@/features/documents/queries";
+import { useDeleteDocument, useDocument, useDocumentFacts } from "@/features/documents/queries";
 import { isProcessing } from "@/features/archive/taxonomy";
 import { useMedia } from "@/lib/use-media";
 import type { DocumentCard } from "@/lib/api/types";
@@ -172,13 +173,16 @@ function Card({
           ))}
         </div>
         <p className="mt-2 type-data text-text-3">{doc.original_filename}</p>
-        <Link
-          href={`/chat?doc=${doc.id}`}
-          className="mt-4 inline-flex min-h-9 items-center gap-2 rounded-md border border-border bg-surface px-3 type-subhead text-text-1 transition-colors hover:border-accent-300 hover:bg-accent-50"
-        >
-          <MessageSquareText aria-hidden className="size-4 text-accent" />
-          Ask about this document
-        </Link>
+        <div className="mt-4 flex items-center gap-2">
+          <Link
+            href={`/chat?doc=${doc.id}`}
+            className="inline-flex min-h-9 items-center gap-2 rounded-md border border-border bg-surface px-3 type-subhead text-text-1 transition-colors hover:border-accent-300 hover:bg-accent-50"
+          >
+            <MessageSquareText aria-hidden className="size-4 text-accent" />
+            Ask about this document
+          </Link>
+          <DeleteDocumentButton documentId={doc.id} title={title} />
+        </div>
       </header>
 
       {doc.status === "failed" ? (
@@ -274,6 +278,29 @@ function Card({
         </Section>
       ) : null}
     </>
+  );
+}
+
+function DeleteDocumentButton({ documentId, title }: { documentId: string; title: string }) {
+  const router = useRouter();
+  const deleteDoc = useDeleteDocument();
+  return (
+    <button
+      type="button"
+      disabled={deleteDoc.isPending}
+      aria-label={`Delete ${title}`}
+      onClick={() => {
+        if (window.confirm(`Delete “${title}”? This removes the file, its facts, and it can't be undone.`)) {
+          deleteDoc.mutate(documentId, {
+            onSuccess: () => router.replace("/archive"),
+          });
+        }
+      }}
+      className="inline-flex min-h-9 items-center gap-2 rounded-md border border-border bg-surface px-3 type-subhead text-text-2 transition-colors hover:border-danger/40 hover:bg-danger/10 hover:text-danger disabled:opacity-50"
+    >
+      <Trash2 aria-hidden className="size-4" />
+      Delete
+    </button>
   );
 }
 

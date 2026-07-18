@@ -1,18 +1,20 @@
 "use client";
 
 /**
- * MoveMenu — "Move to folder…" on a table row. Replaces v1's drag-to-folder
- * (a deliberate trade: dnd fights a sortable table and chips make poor drop
- * targets once the list scrolls; a menu also works on touch). Picks from the
- * full taxonomy (parents + children, empty folders included) and files the
- * document with `set_primary`, keeping its other labels.
+ * MoveMenu — the row's document menu: "Move to folder…" (replacing v1's
+ * drag-to-folder — a deliberate trade: dnd fights a sortable table and chips
+ * make poor drop targets once the list scrolls; a menu also works on touch)
+ * plus "Delete document". Folders come from the full taxonomy (parents +
+ * children, empty folders included); moving files with `set_primary`, keeping
+ * the document's other labels.
  */
 
 import { useRef, useState } from "react";
-import { Check, FolderInput } from "lucide-react";
+import { Check, FolderInput, Trash2 } from "lucide-react";
 import clsx from "clsx";
 
 import { useClasses, useRefile } from "@/features/archive/queries";
+import { useDeleteDocument } from "@/features/documents/queries";
 import type { DocumentSummary } from "@/lib/api/types";
 import { useDismiss } from "@/lib/use-dismiss";
 
@@ -25,6 +27,7 @@ export function MoveMenu({
 }) {
   const { data } = useClasses();
   const refile = useRefile();
+  const deleteDoc = useDeleteDocument();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, () => setOpen(false), open);
@@ -37,6 +40,14 @@ export function MoveMenu({
       { documentId: doc.id, classId, mode: "set_primary" },
       { onSuccess: () => onMoved(name) },
     );
+  };
+
+  const remove = () => {
+    setOpen(false);
+    const title = doc.title?.trim() || doc.original_filename;
+    if (window.confirm(`Delete “${title}”? This removes the file, its facts, and it can't be undone.`)) {
+      deleteDoc.mutate(doc.id);
+    }
   };
 
   return (
@@ -77,6 +88,16 @@ export function MoveMenu({
               ))}
             </div>
           ))}
+          <div className="mt-1 border-t border-border pt-1">
+            <button
+              type="button"
+              onClick={remove}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 type-subhead text-danger transition-colors hover:bg-danger/10"
+            >
+              <Trash2 aria-hidden className="size-3.5" />
+              Delete document
+            </button>
+          </div>
         </div>
       ) : null}
     </div>

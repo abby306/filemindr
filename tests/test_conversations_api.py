@@ -296,3 +296,76 @@ def test_message_groups_citations_by_document(client, seeded_account, monkeypatc
     assert group_a["title"] == "Doc A"
     assert group_a["pages"] == [3, 7]  # merged + sorted
     assert len(group_a["fact_ids"]) == 2
+
+
+# --- conversation deletion ----------------------------------------------------
+
+
+def test_delete_conversation_removes_it_and_its_history(client, seeded_account, monkeypatch) -> None:
+    _stub_synthesize(monkeypatch)
+    headers = _headers(seeded_account)
+    cid = client.post("/api/v1/conversations", headers=headers).json()["id"]
+    client.post(f"/api/v1/conversations/{cid}/messages", headers=headers,
+                json={"content": "hello"})
+
+    res = client.delete(f"/api/v1/conversations/{cid}", headers=headers)
+    assert res.status_code == 204
+    assert cid not in [c["id"] for c in client.get("/api/v1/conversations", headers=headers).json()]
+    with SessionLocal() as db:
+        from sqlalchemy import select
+        assert db.scalars(select(Message).where(Message.conversation_id == uuid.UUID(cid))).first() is None
+
+
+def test_delete_conversation_foreign_or_unknown_404s(client, seeded_account) -> None:
+    headers = _headers(seeded_account)
+    cid = client.post("/api/v1/conversations", headers=headers).json()["id"]
+    assert client.delete(
+        f"/api/v1/conversations/{cid}", headers=_headers(seeded_account, account="company_id")
+    ).status_code == 404
+    assert client.delete(
+        f"/api/v1/conversations/{uuid.uuid4()}", headers=headers
+    ).status_code == 404
+    # still there for its owner
+    assert client.delete(f"/api/v1/conversations/{cid}", headers=headers).status_code == 204
+
+
+# --- @-mention document scope (document_ids) ---------------------------------
+
+
+def test_document_ids_pin_the_answer(client, seeded_account, monkeypatch) -> None:
+    captured: dict = {}
+    _stub_synthesize(monkeypatch, capture=captured)
+    headers = _headers(seeded_account)
+    acct = seeded_account["personal_id"]
+    with SessionLocal() as db:
+        docs = [
+            Document(account_id=acct, source="web_upload", original_filename=f"m{i}.pdf",
+                     file_hash=uuid.uuid4().hex, storage_path=f"/tmp/m{i}.pdf", status="indexed")
+            for i in range(2)
+        ]
+        db.add_all(docs)
+        db.commit()
+        ids = [doc.id for doc in docs]
+
+    try:
+        cid = client.post("/api/v1/conversations", headers=headers).json()["id"]
+        res = client.post(
+            f"/api/v1/conversations/{cid}/messages", headers=headers,
+            json={"content": "compare them", "document_ids": [str(i) for i in ids]},
+        )
+        assert res.status_code == 200, res.text
+        assert captured["document_ids"] == ids  # both pinned, order kept
+
+        # A mention of a foreign/unknown document 404s.
+        bad = client.post(
+            f"/api/v1/conversations/{cid}/messages", headers=headers,
+            json={"content": "x", "document_ids": [str(uuid.uuid4())]},
+        )
+        assert bad.status_code == 404
+    finally:
+        with SessionLocal() as db:
+            for i in ids:
+                doc = db.get(Document, i)
+                if doc is not None:
+                    db.delete(doc)
+            db.commit()

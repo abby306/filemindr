@@ -59,9 +59,10 @@ List the account's conversations (most-recently-updated first) for the chat rail
 - Res `200`: `[{ id, title, preview, message_count, created_at, updated_at }]` — `title` is derived server-side from the first user message; `preview` is the last message.
 
 ### POST /conversations → `{ id }`
+### DELETE /conversations/{id} → `204` (messages/traces/ratings cascade; `404` foreign/unknown)
 ### POST /conversations/{id}/messages
 Send a user message; get a grounded answer.
-- Req: `{ content, scope?: "account"|"document", document_id? }`
+- Req: `{ content, scope?: "account"|"document", document_id?, document_ids?: [uuid, ≤10] }` — `document_ids` are @-mentions; they merge with `document_id` and any pinned document implies document scope (`404` if one isn't in the account).
 - Res `200`:
 ```json
 {

@@ -155,6 +155,9 @@ class MessageCreate(BaseModel):
     content: str
     scope: Literal["account", "document"] | None = None
     document_id: uuid.UUID | None = None
+    # @-mentions: pin the answer to these documents. Merged with `document_id`;
+    # the presence of any pinned document implies document scope.
+    document_ids: list[uuid.UUID] | None = Field(default=None, max_length=10)
 
 
 class CitationOut(BaseModel):

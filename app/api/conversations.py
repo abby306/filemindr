@@ -47,14 +47,21 @@ def _require_query_quota(scope: AccountScope) -> None:
 def _resolve_document_scope(
     scope: AccountScope, body: MessageCreate
 ) -> list[uuid.UUID] | None:
-    """Validate a `scope="document"` request → the pinned document ids (or None).
+    """The pinned document ids for this turn (or None for account-wide).
 
-    400 if `scope="document"` without a `document_id`; 404 if that document isn't in
-    the active account.
+    `document_id` (the document-scoped chat) and `document_ids` (@-mentions)
+    merge; any pinned document implies document scope. 400 if
+    `scope="document"` names no document at all; 404 if any pinned document
+    isn't in the active account.
     """
-    if body.scope != "document":
-        return None
-    if body.document_id is None:
+    pinned: list[uuid.UUID] = []
+    if body.document_id is not None:
+        pinned.append(body.document_id)
+    for doc_id in body.document_ids or []:
+        if doc_id not in pinned:
+            pinned.append(doc_id)
+
+    if body.scope == "document" and not pinned:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -62,13 +69,22 @@ def _resolve_document_scope(
                 "message": "scope='document' requires document_id.",
             },
         )
-    doc = scope.db.scalar(scope.select(Document).where(Document.id == body.document_id))
-    if doc is None:
+    if not pinned:
+        return None
+
+    found = set(
+        scope.db.scalars(
+            scope.select(Document)
+            .with_only_columns(Document.id)
+            .where(Document.id.in_(pinned))
+        )
+    )
+    if any(doc_id not in found for doc_id in pinned):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "not_found", "message": "Document not found."},
         )
-    return [body.document_id]
+    return pinned
 
 
 def _require_conversation(scope: AccountScope, conversation_id: uuid.UUID) -> None:
@@ -108,6 +124,24 @@ def create_conversation(
         scope.account_id, user_id=scope.user.id, db=scope.db
     )
     return ConversationOut(id=convo_id)
+
+
+@router.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_conversation(
+    conversation_id: uuid.UUID,
+    scope: AccountScope = Depends(get_current_account),
+) -> None:
+    """Delete a conversation and its history (messages/traces/ratings cascade)."""
+    convo = scope.db.scalar(
+        scope.select(Conversation).where(Conversation.id == conversation_id)
+    )
+    if convo is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Conversation not found."},
+        )
+    scope.db.delete(convo)
+    scope.db.commit()
 
 
 @router.post(
