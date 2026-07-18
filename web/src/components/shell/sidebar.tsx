@@ -96,6 +96,24 @@ export function Sidebar({
       aria-label="Primary"
       className={clsx("flex h-full flex-col gap-1 overflow-y-auto", collapsed ? "p-2" : "p-3")}
     >
+      {onToggleCollapse ? (
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={clsx(
+            "mb-1 flex min-h-9 items-center rounded-md py-2 text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1",
+            collapsed ? "justify-center px-0" : "justify-end px-3",
+          )}
+        >
+          {collapsed ? (
+            <PanelLeftOpen aria-hidden className="size-[18px] shrink-0" strokeWidth={1.75} />
+          ) : (
+            <PanelLeftClose aria-hidden className="size-[18px] shrink-0" strokeWidth={1.75} />
+          )}
+        </button>
+      ) : null}
       <div className="flex flex-col gap-0.5">
         {PRIMARY_NAV.map((item) => (
           <NavLink
@@ -116,27 +134,6 @@ export function Sidebar({
         {SECONDARY_NAV.map((item) => (
           <NavLink key={item.href} item={item} collapsed={collapsed} onNavigate={onNavigate} />
         ))}
-        {onToggleCollapse ? (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={clsx(
-              "mt-1 flex min-h-11 items-center gap-3 rounded-md py-2 type-subhead text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1",
-              collapsed ? "justify-center px-0" : "px-3",
-            )}
-          >
-            {collapsed ? (
-              <PanelLeftOpen aria-hidden className="size-[18px] shrink-0" strokeWidth={1.75} />
-            ) : (
-              <>
-                <PanelLeftClose aria-hidden className="size-[18px] shrink-0" strokeWidth={1.75} />
-                <span>Collapse</span>
-              </>
-            )}
-          </button>
-        ) : null}
       </div>
     </nav>
   );
