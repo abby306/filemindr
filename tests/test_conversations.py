@@ -10,7 +10,7 @@ import uuid
 
 import pytest
 
-from app.db.models import Message, RetrievalTrace
+from app.db.models import Conversation, Message, RetrievalTrace
 from app.db.session import SessionLocal
 from app.services import conversations
 from app.services.synthesis import Citation, SynthesisResult
@@ -166,3 +166,51 @@ def test_chat_stream_persists_question_before_synthesis(seeded_account, monkeypa
     with SessionLocal() as db:
         history = conversations.load_history(db, acct, convo_id)
     assert history == [{"role": "user", "content": "what is the total?"}]
+
+
+# --- generated conversation titles -------------------------------------------
+
+
+def test_first_answer_upgrades_title_from_fallback(seeded_account, monkeypatch) -> None:
+    acct = seeded_account["personal_id"]
+
+    def fake_synthesize(query, account_id, **kw):
+        return SynthesisResult(query=query, answer="the total is 348", supported=True)
+
+    monkeypatch.setattr("app.services.synthesis.synthesize", fake_synthesize)
+    monkeypatch.setattr(
+        "app.services.synthesis.generate_conversation_title",
+        lambda query, answer: "Meezan bank charges",
+    )
+
+    _, convo_id, _ = conversations.chat(acct, "what were the bank charges on the account?")
+    with SessionLocal() as db:
+        assert db.get(Conversation, convo_id).title == "Meezan bank charges"
+
+    # A later turn never overwrites the generated title.
+    monkeypatch.setattr(
+        "app.services.synthesis.generate_conversation_title",
+        lambda query, answer: "Something else",
+    )
+    conversations.chat(acct, "and the FED portion?", conversation_id=convo_id)
+    with SessionLocal() as db:
+        assert db.get(Conversation, convo_id).title == "Meezan bank charges"
+    with SessionLocal() as db:
+        db.delete(db.get(Conversation, convo_id))
+        db.commit()
+
+
+def test_title_generation_failure_keeps_fallback(seeded_account, monkeypatch) -> None:
+    acct = seeded_account["personal_id"]
+
+    def fake_synthesize(query, account_id, **kw):
+        return SynthesisResult(query=query, answer="a", supported=True)
+
+    monkeypatch.setattr("app.services.synthesis.synthesize", fake_synthesize)
+    # conftest's autouse stub already returns None (generation "failed").
+    _, convo_id, _ = conversations.chat(acct, "what were the bank charges?")
+    with SessionLocal() as db:
+        assert db.get(Conversation, convo_id).title == "what were the bank charges?"
+    with SessionLocal() as db:
+        db.delete(db.get(Conversation, convo_id))
+        db.commit()

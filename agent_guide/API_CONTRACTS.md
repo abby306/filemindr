@@ -56,7 +56,7 @@ List documents (paginated, filterable).
 
 ### GET /conversations
 List the account's conversations (most-recently-updated first) for the chat rail / continue-any-chat.
-- Res `200`: `[{ id, title, preview, message_count, created_at, updated_at }]` — `title` is derived server-side from the first user message; `preview` is the last message.
+- Res `200`: `[{ id, title, preview, message_count, created_at, updated_at }]` — `title` is generated server-side after the first answer (a short model-written subject line; the truncated first message is the fallback); `preview` is the last message.
 
 ### POST /conversations → `{ id }`
 ### DELETE /conversations/{id} → `204` (messages/traces/ratings cascade; `404` foreign/unknown)

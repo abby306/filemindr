@@ -449,6 +449,35 @@ def _page_text(db, account_id: uuid.UUID, document_id: uuid.UUID, page: int) -> 
     return None
 
 
+_TITLE_INSTRUCTION = (
+    "Write a title for this exchange: 3–6 words, plain language, no quotes, no "
+    "trailing punctuation. Name the subject itself (e.g. 'Meter DB key design', "
+    "'Meezan bank charges'), never the activity ('User asks about…')."
+)
+
+
+def generate_conversation_title(query: str, answer: str) -> str | None:
+    """Best-effort short title for a new conversation; None on any failure.
+
+    One cheap Flash call after the first answer — callers keep the truncated
+    question as the fallback, so a provider hiccup costs nothing.
+    """
+    from google.genai import types
+
+    try:
+        resp = _get_client().models.generate_content(
+            model=MODEL,
+            contents=f"Question: {query[:400]}\nAnswer: {answer[:400]}",
+            config=types.GenerateContentConfig(
+                system_instruction=_TITLE_INSTRUCTION, temperature=0
+            ),
+        )
+        title = " ".join((resp.text or "").split()).strip("\"'“”").rstrip(".")
+        return title[:60] or None
+    except Exception:  # noqa: BLE001 — titles are cosmetic, never fail the turn
+        return None
+
+
 def _apply_off_focus_note(result: "SynthesisResult", anchor_document_ids, titles) -> None:
     """Server-written attribution: a supported answer citing ONLY documents
     outside the conversation focus, without naming them, gets a plain-language

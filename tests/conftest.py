@@ -24,6 +24,16 @@ from app.db.models import Account, AccountMember, User
 from app.db.session import SessionLocal
 
 
+@pytest.fixture(autouse=True)
+def _no_conversation_title_generation(monkeypatch):
+    """Titles are a live-model nicety — keep every test offline by default
+    (the fallback truncated-question title applies). Title tests override."""
+    monkeypatch.setattr(
+        "app.services.synthesis.generate_conversation_title",
+        lambda query, answer: None,
+    )
+
+
 @pytest.fixture
 def db() -> Iterator[Session]:
     """A session whose work is rolled back at the end of the test."""

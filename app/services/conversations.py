@@ -242,6 +242,27 @@ def group_citations(citations) -> list[dict]:
     return [groups[k] for k in order]
 
 
+def _ensure_title(db, conversation_id: uuid.UUID, query: str, answer: str) -> None:
+    """Upgrade a new conversation's title from the truncated-question fallback
+    to a short generated one (best-effort; the fallback stays on failure).
+
+    Runs once: after the first answered turn the stored title no longer equals
+    the current question's truncation, so later turns skip it.
+    """
+    convo = db.get(Conversation, conversation_id)
+    if convo is None:
+        return
+    fallback = _truncate(query, _TITLE_LIMIT)
+    if convo.title and convo.title != fallback:
+        return
+    from app.services.synthesis import generate_conversation_title
+
+    title = generate_conversation_title(query, answer)
+    if title:
+        convo.title = title
+        db.commit()
+
+
 def _recent_citation_doc_ids(
     db, account_id: uuid.UUID, conversation_id: uuid.UUID, *, max_docs: int = 3
 ) -> list[uuid.UUID]:
@@ -320,6 +341,7 @@ def chat(
         record_trace(db, account_id, assistant_message_id, result)
         _meter_query(db, account_id, user_id, conversation_id, assistant_message_id, result)
         db.commit()
+        _ensure_title(db, conversation_id, user_message, result.answer)
         return result, conversation_id, assistant_message_id
     finally:
         if own:
@@ -423,5 +445,9 @@ def chat_stream(
                 for g in group_citations(result.citations)
             ],
         }
+        # After `done` (never delaying the answer): upgrade a new chat's title
+        # from the truncated question to a short generated one. The client
+        # refetches the rail when the stream closes, so it lands right away.
+        _ensure_title(db, conversation_id, user_message, result.answer)
     finally:
         db.close()
