@@ -7,14 +7,15 @@
  * table's visual order, ⌘A selects all, Escape clears; double-click / title /
  * the eye button open, Space Quick Looks a single selection. Right-clicking a
  * row opens the document menu — acting on the whole selection when the row is
- * part of it — and two or more selected raises the bulk SelectionBar.
- * Gallery view stays click-to-open (no selection).
+ * part of it — and two or more selected raises the bulk SelectionBar. Details
+ * and List share the whole contract; Icons stays click-to-open (no selection).
  */
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { DocumentCard } from "@/components/archive/document-card";
+import { DocumentList } from "@/components/archive/document-list";
 import { documentMenuItems, folderMoveOptions } from "@/components/archive/document-menu";
 import { DocumentPreview } from "@/components/archive/document-preview";
 import { DocumentTable, type RowClick } from "@/components/archive/document-table";
@@ -26,6 +27,7 @@ import {
   useBulkRefile,
   useClasses,
 } from "@/features/archive/queries";
+import type { ViewMode } from "@/features/archive/view-mode";
 import type { DocumentSummary } from "@/lib/api/types";
 
 const titleOf = (d: DocumentSummary) => d.title?.trim() || d.original_filename;
@@ -45,7 +47,7 @@ export function LeafView({
   isFetchingNextPage,
 }: {
   docs: DocumentSummary[];
-  view: "table" | "gallery";
+  view: ViewMode;
   onToast: (message: string) => void;
   hasNextPage: boolean;
   fetchNextPage: () => void;
@@ -155,7 +157,7 @@ export function LeafView({
         clear();
         return;
       }
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a" && view === "table") {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a" && view !== "icons") {
         e.preventDefault();
         setSelectedIds(new Set(docs.map((d) => d.id)));
         return;
@@ -168,6 +170,9 @@ export function LeafView({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [docs, single, view]);
+
+  const dragIdsFor = (doc: DocumentSummary) =>
+    selectedIds.has(doc.id) && selectedIds.size > 1 ? [...selectedIds] : [doc.id];
 
   const menuItems = menu
     ? documentMenuItems({
@@ -188,9 +193,13 @@ export function LeafView({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className={single && view === "table" ? "xl:grid xl:grid-cols-[1fr_290px] xl:gap-6" : ""}>
+      <div
+        className={
+          single && view !== "icons" ? "xl:grid xl:grid-cols-[1fr_290px] xl:gap-6" : ""
+        }
+      >
         <div className="min-w-0">
-          {view === "table" ? (
+          {view === "details" ? (
             <DocumentTable
               docs={docs}
               onMoved={(name) => onToast(`Moved to ${name}`)}
@@ -198,11 +207,15 @@ export function LeafView({
               onSelect={select}
               onQuickLook={(d) => setQuickLook(d)}
               onRowContextMenu={openMenu}
-              dragIdsFor={(doc) =>
-                selectedIds.has(doc.id) && selectedIds.size > 1
-                  ? [...selectedIds]
-                  : [doc.id]
-              }
+              dragIdsFor={dragIdsFor}
+            />
+          ) : view === "list" ? (
+            <DocumentList
+              docs={docs}
+              selectedIds={selectedIds}
+              onSelect={select}
+              onRowContextMenu={openMenu}
+              dragIdsFor={dragIdsFor}
             />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -213,7 +226,7 @@ export function LeafView({
           )}
         </div>
 
-        {single && view === "table" ? (
+        {single && view !== "icons" ? (
           <aside className="hidden xl:block">
             <div className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-lg border border-border bg-surface p-4">
               <DocumentPreview doc={single} size="pane" />

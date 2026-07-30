@@ -13,6 +13,7 @@ import {
   FolderOpen,
   FolderPlus,
   LayoutGrid,
+  List,
   Search,
   Sparkles,
   TableProperties,
@@ -33,6 +34,7 @@ import {
   useClasses,
   useCreateFolder,
 } from "@/features/archive/queries";
+import { useViewMode, type ViewMode } from "@/features/archive/view-mode";
 import {
   breadcrumbFor,
   folderTilesFor,
@@ -41,11 +43,9 @@ import {
 } from "@/features/archive/taxonomy";
 import type { DocumentSummary } from "@/lib/api/types";
 
-type ViewMode = "table" | "gallery";
-
 export function ArchiveScreen({ folderSegment }: { folderSegment?: string }) {
   const { filter } = resolveFolder(folderSegment);
-  const [view, setView] = useState<ViewMode>("table");
+  const [view, setView] = useViewMode();
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
@@ -121,8 +121,9 @@ export function ArchiveScreen({ folderSegment }: { folderSegment?: string }) {
               value={view}
               onChange={setView}
               segments={[
-                { value: "table", label: "Table", icon: <TableProperties className="size-4" /> },
-                { value: "gallery", label: "Gallery", icon: <LayoutGrid className="size-4" /> },
+                { value: "details", label: "Details", icon: <TableProperties className="size-4" /> },
+                { value: "list", label: "List", icon: <List className="size-4" /> },
+                { value: "icons", label: "Icons", icon: <LayoutGrid className="size-4" /> },
               ]}
             />
           </div>
@@ -250,10 +251,13 @@ function DocumentResults({
   } = useArchiveDocuments(filter);
 
   if (isPending) {
-    return view === "table" ? (
+    return view !== "icons" ? (
       <div className="flex flex-col gap-px overflow-hidden rounded-lg border border-border">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-14 w-full rounded-none" />
+        {Array.from({ length: view === "list" ? 12 : 8 }).map((_, i) => (
+          <Skeleton
+            key={i}
+            className={view === "list" ? "h-9 w-full rounded-none" : "h-14 w-full rounded-none"}
+          />
         ))}
       </div>
     ) : (

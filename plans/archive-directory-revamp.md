@@ -44,12 +44,17 @@ features and a folder-scoped chat.
 
 ## Phasing
 
-- **Phase 1 — The directory (frontend only):** nested browse + routing, folder grid,
-  tree pane, Icons/List/Details, Quick Look + preview pane, context menus, multi-select
-  + bulk move/delete. Ships on today's API.
-- **Phase 2 — Ask this folder:** backend #1 (folder-scoped chat) + docked chat panel with
-  citations; drag-to-refile; smart folders (Recent [local], By vendor/party [client-side],
-  This month).
+- **Phase 1 — The directory (frontend only):** ✅ **DONE.** Nested browse + routing,
+  folder grid, tree pane, Quick Look + preview pane (A–C); context menus + multi-select
+  + bulk move/delete (E); drag-to-refile (F, pulled forward from Phase 2).
+  Icons/List/Details view modes (D) shipped too: Table→**Details**, Gallery→**Icons**,
+  plus a new column-flow **List** (names only) that shares selection/menu/drag with
+  the table. The choice persists per browser.
+- **Phase 2 — Ask this folder:** ✅ **DONE for the headline.** Backend #1 shipped
+  (`scope:"folder"` + `class_slug` → `synthesize(class_slug=)` → every `retrieve()`
+  pass, agent `search` tool included) and the docked, folder-scoped chat panel ships
+  with it. **Still open:** smart folders (Recent [local], By vendor/party
+  [client-side], This month).
 - **Phase 3 — Memory & depth:** Starred/Quick Access (#4), Folder Properties (#5),
   in-folder server search (#3), sort/group refinements.
 
