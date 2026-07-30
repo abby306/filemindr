@@ -53,10 +53,12 @@ export interface FolderNode {
  * whose parent isn't present are treated as top-level. Parents sort system-first
  * then by name (matching the API order); children by name.
  *
- * By default the browse view only surfaces folders that actually hold
- * documents: empty subclasses are hidden, and a parent is shown only when it
- * (or a child) has documents. Pass `includeEmpty` for assignment surfaces
- * (the move-to-folder menu) where every class must be a valid target.
+ * By default the browse view hides *system* folders that hold no documents (the
+ * seeded taxonomy is much wider than any one archive). Custom folders always
+ * show: the user made them deliberately, and a folder that disappeared the
+ * moment it was created would be unnameable and undeletable. Pass `includeEmpty`
+ * for assignment surfaces (the move-to-folder menu) where every class is a
+ * valid target.
  */
 export function buildFolderTree(
   classes: ClassInfo[],
@@ -84,13 +86,19 @@ export function buildFolderTree(
       const allChildren = (childrenOf.get(cls.id) ?? []).sort(byName);
       const totalCount =
         cls.document_count + allChildren.reduce((n, c) => n + c.document_count, 0);
-      // Hide empty subclasses from the browse chips (not from assignment).
+      // Hide empty *system* subfolders from browse (not from assignment).
       const children = includeEmpty
         ? allChildren
-        : allChildren.filter((c) => c.document_count > 0);
+        : allChildren.filter((c) => c.document_count > 0 || !c.is_system);
       return { cls, children, totalCount };
     })
-    .filter((node) => includeEmpty || node.totalCount > 0);
+    .filter(
+      (node) =>
+        includeEmpty ||
+        node.totalCount > 0 ||
+        !node.cls.is_system ||
+        node.children.length > 0,
+    );
 }
 
 /** Resolve a URL folder segment to the filter + a stable selection key. */
@@ -175,6 +183,8 @@ export function parentHref(filter: FolderFilter, classes: ClassInfo[]): string {
 }
 
 export interface FolderTile {
+  /** Class id — folder rename/delete address the class, not the slug. */
+  id: string;
   slug: string;
   name: string;
   count: number;
@@ -183,7 +193,14 @@ export interface FolderTile {
 }
 
 function toTile(cls: ClassInfo, count: number, hasChildren: boolean): FolderTile {
-  return { slug: cls.slug, name: cls.name, count, isSystem: cls.is_system, hasChildren };
+  return {
+    id: cls.id,
+    slug: cls.slug,
+    name: cls.name,
+    count,
+    isSystem: cls.is_system,
+    hasChildren,
+  };
 }
 
 /**

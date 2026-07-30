@@ -60,7 +60,7 @@ export function ArchiveScreen({ folderSegment }: { folderSegment?: string }) {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:py-8">
-      <FolderTree filter={filter} />
+      <FolderTree filter={filter} onToast={setToast} />
       <div className="flex min-w-0 flex-1 flex-col">
       <header className="mb-4">
         <p className="eyebrow mb-1">Archive</p>
@@ -111,14 +111,13 @@ export function ArchiveScreen({ folderSegment }: { folderSegment?: string }) {
       </div>
 
       {isFolderView ? (
-        <FolderGrid tiles={tiles} showNeedsReview={filter.kind === "all"} />
-      ) : (
-        <DocumentResults
-          filter={filter}
-          view={view}
-          query={query}
-          onMoved={(name) => setToast(`Moved to ${name}`)}
+        <FolderGrid
+          tiles={tiles}
+          showNeedsReview={filter.kind === "all"}
+          onToast={setToast}
         />
+      ) : (
+        <DocumentResults filter={filter} view={view} query={query} onToast={setToast} />
       )}
       </div>
 
@@ -189,12 +188,12 @@ function DocumentResults({
   filter,
   view,
   query,
-  onMoved,
+  onToast,
 }: {
   filter: ReturnType<typeof resolveFolder>["filter"];
   view: ViewMode;
   query: string;
-  onMoved: (folderName: string) => void;
+  onToast: (message: string) => void;
 }) {
   const {
     data,
@@ -268,7 +267,7 @@ function DocumentResults({
     <LeafView
       docs={docs}
       view={view}
-      onMoved={onMoved}
+      onToast={onToast}
       hasNextPage={!!hasNextPage}
       fetchNextPage={fetchNextPage}
       isFetchingNextPage={isFetchingNextPage}

@@ -6,6 +6,10 @@
  * (live pipeline while processing), size, date. Sorting is client-side over the
  * loaded pages (the server's keyset order is the date-desc default); rows rise
  * in with a 40ms stagger. Below `sm` the table collapses to a compact list.
+ *
+ * Selection and the row context menu are owned by the caller (LeafView): the
+ * table reports a click with its modifiers plus the rows in *visual* order, so
+ * a shift-range follows the sort the user is looking at.
  */
 
 import { useMemo, useState } from "react";
@@ -17,6 +21,7 @@ import clsx from "clsx";
 import { PageThumb } from "@/components/archive/page-thumb";
 import { MoveMenu } from "@/components/archive/move-menu";
 import { RetryButton } from "@/components/documents/retry-button";
+import type { MenuAnchor } from "@/components/ui/context-menu";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PipelineFill } from "@/components/upload/pipeline-fill";
 import { isProcessing } from "@/features/archive/taxonomy";
@@ -45,20 +50,37 @@ const COMPARE: Record<SortKey, (a: DocumentSummary, b: DocumentSummary) => numbe
 /** Rows past the first dozen skip the stagger so late rows don't lag. */
 const riseDelay = (i: number) => ({ animationDelay: `${Math.min(i, 12) * 40}ms` });
 
+/**
+ * A click on a row, with everything the owner needs to resolve it against the
+ * current selection. `ordered` is the table's *visual* order, so a shift-range
+ * follows what the user sees rather than the unsorted page order.
+ */
+export interface RowClick {
+  doc: DocumentSummary;
+  index: number;
+  ordered: DocumentSummary[];
+  /** ⌘/Ctrl — toggle this row in the selection. */
+  additive: boolean;
+  /** Shift — extend the selection to this row. */
+  range: boolean;
+}
+
 export function DocumentTable({
   docs,
   onMoved,
-  selectedId,
+  selectedIds,
   onSelect,
   onQuickLook,
+  onRowContextMenu,
 }: {
   docs: DocumentSummary[];
   onMoved: (folderName: string) => void;
   /** When provided, a row single-click selects (Explorer-style) instead of
    *  opening; double-click / title / Enter still open. */
-  selectedId?: string | null;
-  onSelect?: (doc: DocumentSummary) => void;
+  selectedIds?: ReadonlySet<string>;
+  onSelect?: (click: RowClick) => void;
   onQuickLook?: (doc: DocumentSummary) => void;
+  onRowContextMenu?: (click: RowClick, anchor: MenuAnchor) => void;
 }) {
   const router = useRouter();
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
@@ -79,11 +101,26 @@ export function DocumentTable({
     return rows;
   }, [docs, sort]);
 
+  const rowClick = (
+    doc: DocumentSummary,
+    index: number,
+    e: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean },
+  ): RowClick => ({
+    doc,
+    index,
+    ordered: sorted,
+    additive: e.metaKey || e.ctrlKey,
+    range: e.shiftKey,
+  });
+
   return (
     <>
       {/* sm+: the dense table */}
       <div className="hidden overflow-x-auto rounded-lg border border-border bg-card sm:block">
-        <table className="w-full table-fixed border-collapse">
+        {/* min-w: the fixed columns total ~560px, so without a floor the title
+            column collapses when the preview rail takes its share — scroll the
+            wrapper instead of crushing the document name. */}
+        <table className="w-full min-w-[760px] table-fixed border-collapse">
           <colgroup>
             <col />
             <col className="w-36" />
@@ -108,15 +145,23 @@ export function DocumentTable({
             {sorted.map((doc, i) => (
               <tr
                 key={doc.id}
-                onClick={() =>
-                  onSelect ? onSelect(doc) : router.push(`/documents/${doc.id}`)
+                onClick={(e) =>
+                  onSelect
+                    ? onSelect(rowClick(doc, i, e))
+                    : router.push(`/documents/${doc.id}`)
                 }
                 onDoubleClick={() => router.push(`/documents/${doc.id}`)}
-                aria-selected={selectedId === doc.id}
+                onContextMenu={(e) => {
+                  if (!onRowContextMenu) return;
+                  e.preventDefault();
+                  onRowContextMenu(rowClick(doc, i, e), { x: e.clientX, y: e.clientY });
+                }}
+                aria-selected={selectedIds?.has(doc.id)}
                 style={riseDelay(i)}
                 className={clsx(
-                  "animate-rise-in group cursor-pointer border-b border-border transition-colors duration-[var(--dur-micro)] last:border-b-0",
-                  selectedId === doc.id ? "bg-accent-wash" : "hover:bg-surface-2",
+                  // select-none: shift-clicking a range shouldn't smear a text selection across rows.
+                  "animate-rise-in group cursor-pointer select-none border-b border-border transition-colors duration-[var(--dur-micro)] last:border-b-0",
+                  selectedIds?.has(doc.id) ? "bg-accent-wash" : "hover:bg-surface-2",
                 )}
               >
                 <td className="py-2 pl-3 pr-2">

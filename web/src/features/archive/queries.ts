@@ -105,6 +105,54 @@ export function useRefile() {
   });
 }
 
+/**
+ * Bulk operations for a multi-selection. There is no batch endpoint (and the
+ * per-document semantics are already right), so these fan out sequentially —
+ * selections are handfuls, and one serial pass keeps the server's per-document
+ * work ordered and the cache invalidated exactly once at the end.
+ */
+export function useBulkRefile() {
+  const { account, request } = useAccount();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      documentIds,
+      classId,
+    }: {
+      documentIds: string[];
+      classId: string;
+    }) => {
+      for (const documentId of documentIds) {
+        await request(`/api/v1/documents/${documentId}/classes`, {
+          method: "POST",
+          json: { class_ids: [classId], mode: "set_primary" },
+        });
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["documents", account.id] });
+      qc.invalidateQueries({ queryKey: ["classes", account.id] });
+    },
+  });
+}
+
+export function useBulkDeleteDocuments() {
+  const { account, request } = useAccount();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (documentIds: string[]) => {
+      for (const documentId of documentIds) {
+        await request(`/api/v1/documents/${documentId}`, { method: "DELETE" });
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["documents", account.id] });
+      qc.invalidateQueries({ queryKey: ["classes", account.id] });
+      qc.invalidateQueries({ queryKey: ["mentionable-documents", account.id] });
+    },
+  });
+}
+
 export function useCreateFolder() {
   const { account, request } = useAccount();
   const qc = useQueryClient();
