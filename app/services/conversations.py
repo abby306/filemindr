@@ -312,6 +312,7 @@ def chat(
     conversation_id: uuid.UUID | None = None,
     user_id: uuid.UUID | None = None,
     document_ids: list[uuid.UUID] | None = None,
+    class_slug: str | None = None,
     db=None,
 ):
     """One conversational turn: load history → answer → persist both messages.
@@ -319,7 +320,8 @@ def chat(
     Creates the conversation if `conversation_id` is None. Returns
     ``(SynthesisResult, conversation_id, assistant_message_id)``. The agent sees the
     prior turns (not the just-sent message), so follow-ups and corrections work; pass
-    `document_ids` to scope the answer to specific documents. Writes one
+    `document_ids` to scope the answer to specific documents, or `class_slug` to
+    scope it to one folder and its subfolders ("Ask this folder"). Writes one
     `retrieval_traces` row for the assistant turn.
     """
     from app.services.synthesis import synthesize  # local import avoids a cycle
@@ -342,6 +344,7 @@ def chat(
         result = synthesize(
             user_message, account_id, history=history, db=db,
             document_ids=document_ids, anchor_document_ids=anchors or None,
+            class_slug=class_slug,
         )
 
         add_message(db, account_id, conversation_id, "user", user_message)
@@ -365,6 +368,7 @@ def chat_stream(
     conversation_id: uuid.UUID | None = None,
     user_id: uuid.UUID | None = None,
     document_ids: list[uuid.UUID] | None = None,
+    class_slug: str | None = None,
 ):
     """Streaming variant of `chat`: yields the agent's step events, then persists.
 
@@ -405,6 +409,7 @@ def chat_stream(
             for event in synthesize_iter(
                 user_message, account_id, history=history, db=db,
                 document_ids=document_ids, anchor_document_ids=anchors or None,
+                class_slug=class_slug,
             ):
                 if event["type"] == "result":
                     result = event["result"]

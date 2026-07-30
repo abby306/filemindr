@@ -660,6 +660,7 @@ def synthesize_iter(
     max_steps: int = _MAX_STEPS,
     document_ids: list[uuid.UUID] | None = None,
     anchor_document_ids: list[uuid.UUID] | None = None,
+    class_slug: str | None = None,
 ):
     """The agentic loop as an event stream (for SSE), ending in the final result.
 
@@ -672,6 +673,10 @@ def synthesize_iter(
     drains this; the streaming endpoint forwards the events. Same contract as
     `synthesize` otherwise (corpus overview + initial pool + history seed the
     model; bounded loop with a forced finish; `document_ids` pins retrieval).
+
+    `class_slug` scopes the turn to one folder and its subfolders ("Ask this
+    folder"): every retrieval pass inherits it, including the agent's own
+    `search` tool, so the answer can only be grounded in that folder's facts.
     """
     started = time.monotonic()
     own_session = db is None
@@ -687,7 +692,8 @@ def synthesize_iter(
         corpus_doc_count = overview.get("total_documents", len(overview_docs))
 
         first = retrieval.retrieve(
-            query, account_id, db=db, k=_POOL_SIZE, document_ids=document_ids
+            query, account_id, db=db, k=_POOL_SIZE, document_ids=document_ids,
+            class_slug=class_slug,
         )
         intent = first.intent
         yield {"type": "intent", "intent": intent}
@@ -713,7 +719,7 @@ def synthesize_iter(
             ctx_query = _contextual_query(query, history)
             if ctx_query:
                 contextual = retrieval.retrieve(
-                    ctx_query, account_id, db=db, k=_POOL_SIZE
+                    ctx_query, account_id, db=db, k=_POOL_SIZE, class_slug=class_slug
                 )
                 pool = _merge_hits(pool, contextual.facts, cap=_POOL_SIZE + 8)
 
@@ -734,6 +740,12 @@ def synthesize_iter(
         if document_ids:
             payload["scope"] = (
                 "The user's question is scoped to a specific document; answer from it."
+            )
+        elif class_slug:
+            payload["scope"] = (
+                f"The user is asking about the '{class_slug}' folder. Every fact you "
+                "can retrieve comes from that folder; answer only from it, and say so "
+                "plainly if the folder doesn't hold the answer."
             )
         elif anchor_document_ids:
             anchor_titles = [
@@ -803,7 +815,9 @@ def synthesize_iter(
                 res = retrieval.retrieve(
                     rq, account_id, db=db, k=_POOL_SIZE,
                     document_ids=[doc_id] if doc_id else None,
-                    class_slug=turn.args.get("class"),
+                    # A folder-scoped chat can't be widened by the agent's own
+                    # class filter — the folder the user asked wins.
+                    class_slug=class_slug or turn.args.get("class"),
                 )
                 _load_doc_meta(db, account_id, [h.document_id for h in res.facts], titles)
                 added = facts.add(res.facts)
@@ -995,6 +1009,7 @@ def synthesize(
     max_steps: int = _MAX_STEPS,
     document_ids: list[uuid.UUID] | None = None,
     anchor_document_ids: list[uuid.UUID] | None = None,
+    class_slug: str | None = None,
 ) -> SynthesisResult:
     """Answer `query` for `account_id` via the corpus-aware agentic loop.
 
@@ -1005,7 +1020,7 @@ def synthesize(
     for event in synthesize_iter(
         query, account_id, db=db, history=history, model=model,
         max_steps=max_steps, document_ids=document_ids,
-        anchor_document_ids=anchor_document_ids,
+        anchor_document_ids=anchor_document_ids, class_slug=class_slug,
     ):
         if event["type"] == "result":
             result = event["result"]

@@ -27,7 +27,7 @@ from app.api.schemas import (
     OkOut,
 )
 from app.core.scoping import AccountScope, get_current_account
-from app.db.models import AnswerRating, Conversation, Document, Message
+from app.db.models import AnswerRating, Class, Conversation, Document, Message
 from app.services import conversations, usage
 
 router = APIRouter(prefix="/api/v1", tags=["conversations"])
@@ -85,6 +85,37 @@ def _resolve_document_scope(
             detail={"code": "not_found", "message": "Document not found."},
         )
     return pinned
+
+
+def _resolve_folder_scope(
+    scope: AccountScope, body: MessageCreate, document_ids: list[uuid.UUID] | None
+) -> str | None:
+    """The class slug this turn is scoped to (or None for the whole archive).
+
+    "Ask this folder" scopes retrieval to a class *and its subclasses* (the
+    retrieval layer expands it). A document scope is narrower, so it wins and the
+    folder is ignored. 400 if `scope="folder"` names no folder; 404 if the slug
+    isn't a class in the active account.
+    """
+    if body.scope == "folder" and not body.class_slug:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "class_slug_required",
+                "message": "scope='folder' requires class_slug.",
+            },
+        )
+    if not body.class_slug or document_ids:
+        return None
+    exists = scope.db.scalar(
+        scope.select(Class).where(Class.slug == body.class_slug)
+    )
+    if exists is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Folder not found."},
+        )
+    return body.class_slug
 
 
 def _require_conversation(scope: AccountScope, conversation_id: uuid.UUID) -> None:
@@ -156,9 +187,11 @@ def post_message(
     """Send a user message and get a grounded, cited answer.
 
     `scope="document"` pins the answer to `document_id` (which must belong to the
-    active account). Returns 404 for an unknown/foreign conversation or document.
+    active account); `scope="folder"` pins it to `class_slug` and its subclasses.
+    Returns 404 for an unknown/foreign conversation, document, or folder.
     """
     document_ids = _resolve_document_scope(scope, body)
+    class_slug = _resolve_folder_scope(scope, body, document_ids)
     _require_query_quota(scope)
 
     try:
@@ -168,6 +201,7 @@ def post_message(
             conversation_id=conversation_id,
             user_id=scope.user.id,
             document_ids=document_ids,
+            class_slug=class_slug,
             db=scope.db,
         )
     except ValueError:
@@ -213,6 +247,7 @@ def post_message_stream(
     answer + citations). Scope/conversation are validated up front, before streaming.
     """
     document_ids = _resolve_document_scope(scope, body)
+    class_slug = _resolve_folder_scope(scope, body, document_ids)
     _require_conversation(scope, conversation_id)
     _require_query_quota(scope)
     events = conversations.chat_stream(
@@ -221,6 +256,7 @@ def post_message_stream(
         conversation_id=conversation_id,
         user_id=scope.user.id,
         document_ids=document_ids,
+        class_slug=class_slug,
     )
     return StreamingResponse(_sse(events), media_type="text/event-stream")
 

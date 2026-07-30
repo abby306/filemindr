@@ -153,8 +153,11 @@ class ConversationListItem(BaseModel):
 
 class MessageCreate(BaseModel):
     content: str
-    scope: Literal["account", "document"] | None = None
+    scope: Literal["account", "document", "folder"] | None = None
     document_id: uuid.UUID | None = None
+    # "Ask this folder": scope the answer to one class and its subclasses.
+    # Ignored when a document scope is in play (the narrower scope wins).
+    class_slug: str | None = None
     # @-mentions: pin the answer to these documents. Merged with `document_id`;
     # the presence of any pinned document implies document scope.
     document_ids: list[uuid.UUID] | None = Field(default=None, max_length=10)

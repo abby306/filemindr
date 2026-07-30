@@ -62,7 +62,7 @@ List the account's conversations (most-recently-updated first) for the chat rail
 ### DELETE /conversations/{id} → `204` (messages/traces/ratings cascade; `404` foreign/unknown)
 ### POST /conversations/{id}/messages
 Send a user message; get a grounded answer.
-- Req: `{ content, scope?: "account"|"document", document_id?, document_ids?: [uuid, ≤10] }` — `document_ids` are @-mentions; they merge with `document_id` and any pinned document implies document scope (`404` if one isn't in the account).
+- Req: `{ content, scope?: "account"|"document"|"folder", document_id?, document_ids?: [uuid, ≤10], class_slug? }` — `document_ids` are @-mentions; they merge with `document_id` and any pinned document implies document scope (`404` if one isn't in the account). `scope:"folder"` + `class_slug` is **"Ask this folder"**: retrieval is pinned to that class **and its subclasses** on every pass, including the agent's own `search` tool (`400 class_slug_required` when the slug is missing, `404` when it isn't a class in the account). A pinned document is narrower and wins — the folder is then ignored.
 - Res `200`:
 ```json
 {

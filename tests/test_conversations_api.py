@@ -12,7 +12,7 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db.models import Document, Message, RetrievalTrace
+from app.db.models import Class, Document, Message, RetrievalTrace
 from app.db.session import SessionLocal
 from app.main import app
 from app.services.synthesis import Citation, SynthesisResult
@@ -35,6 +35,7 @@ def _stub_synthesize(monkeypatch, *, capture=None, **fields):
     def fake(query, account_id, *, history=None, db=None, document_ids=None, **kw):
         if capture is not None:
             capture["document_ids"] = document_ids
+            capture["class_slug"] = kw.get("class_slug")
         defaults = dict(query=query, answer="grounded answer", supported=True)
         defaults.update(fields)
         return SynthesisResult(**defaults)
@@ -194,9 +195,115 @@ def test_list_messages_foreign_conversation_404(client, seeded_account, monkeypa
     assert res.status_code == 404
 
 
-def _stub_synthesize_iter(monkeypatch, *, answer="streamed answer", supported=True):
+def _make_class(seeded_account, slug: str) -> uuid.UUID:
+    """Create a folder in the personal account (the fixture seeds no catalog)."""
+    with SessionLocal() as db:
+        cls = Class(
+            account_id=seeded_account["personal_id"],
+            slug=slug, name=slug.title(), is_system=False,
+        )
+        db.add(cls)
+        db.commit()
+        return cls.id
+
+
+def test_folder_scope_threads_class_slug(client, seeded_account, monkeypatch) -> None:
+    """scope='folder' reaches synthesis as `class_slug` (Ask this folder)."""
+    capture: dict = {}
+    _stub_synthesize(monkeypatch, capture=capture)
+    headers = _headers(seeded_account)
+    convo_id = client.post("/api/v1/conversations", headers=headers).json()["id"]
+    _make_class(seeded_account, "invoice")
+
+    res = client.post(
+        f"/api/v1/conversations/{convo_id}/messages",
+        headers=headers,
+        json={"content": "what did I spend?", "scope": "folder", "class_slug": "invoice"},
+    )
+    assert res.status_code == 200
+    assert capture["class_slug"] == "invoice"
+    assert capture["document_ids"] is None
+
+
+def test_folder_scope_streams_class_slug(client, seeded_account, monkeypatch) -> None:
+    capture: dict = {}
+    _stub_synthesize_iter(monkeypatch, capture=capture)
+    headers = _headers(seeded_account)
+    cid = client.post("/api/v1/conversations", headers=headers).json()["id"]
+    _make_class(seeded_account, "receipt")
+
+    res = client.post(
+        f"/api/v1/conversations/{cid}/messages/stream", headers=headers,
+        json={"content": "summarise this folder", "scope": "folder", "class_slug": "receipt"},
+    )
+    assert res.status_code == 200
+    assert capture["class_slug"] == "receipt"
+
+
+def test_folder_scope_requires_class_slug(client, seeded_account, monkeypatch) -> None:
+    _stub_synthesize(monkeypatch)
+    headers = _headers(seeded_account)
+    convo_id = client.post("/api/v1/conversations", headers=headers).json()["id"]
+    res = client.post(
+        f"/api/v1/conversations/{convo_id}/messages",
+        headers=headers, json={"content": "hi", "scope": "folder"},
+    )
+    assert res.status_code == 400
+    assert res.json()["detail"]["code"] == "class_slug_required"
+
+
+def test_folder_scope_unknown_folder_404(client, seeded_account, monkeypatch) -> None:
+    _stub_synthesize(monkeypatch)
+    headers = _headers(seeded_account)
+    convo_id = client.post("/api/v1/conversations", headers=headers).json()["id"]
+    res = client.post(
+        f"/api/v1/conversations/{convo_id}/messages",
+        headers=headers,
+        json={"content": "hi", "scope": "folder", "class_slug": "no_such_folder"},
+    )
+    assert res.status_code == 404
+
+
+def test_document_scope_wins_over_folder_scope(client, seeded_account, monkeypatch) -> None:
+    """A pinned document is narrower than a folder — the folder is dropped."""
+    capture: dict = {}
+    _stub_synthesize(monkeypatch, capture=capture)
+    headers = _headers(seeded_account)
+    convo_id = client.post("/api/v1/conversations", headers=headers).json()["id"]
+
+    with SessionLocal() as db:
+        doc = Document(
+            account_id=seeded_account["personal_id"], source="web_upload",
+            original_filename="f.pdf", file_hash=uuid.uuid4().hex,
+            storage_path="/tmp/f.pdf", status="indexed",
+        )
+        db.add(doc)
+        db.commit()
+        doc_id = doc.id
+
+    res = client.post(
+        f"/api/v1/conversations/{convo_id}/messages",
+        headers=headers,
+        json={
+            "content": "what does it say?",
+            "document_id": str(doc_id),
+            "class_slug": "no_such_folder",  # would 404 if it were consulted
+        },
+    )
+    assert res.status_code == 200
+    assert capture["document_ids"] == [doc_id]
+    assert capture["class_slug"] is None
+
+    with SessionLocal() as db:
+        db.query(Document).filter_by(id=doc_id).delete()
+        db.commit()
+
+
+def _stub_synthesize_iter(monkeypatch, *, answer="streamed answer", supported=True, capture=None):
     """Patch the streaming core to emit a fixed event sequence + final result."""
     def fake_iter(query, account_id, *, history=None, db=None, document_ids=None, **kw):
+        if capture is not None:
+            capture["class_slug"] = kw.get("class_slug")
         yield {"type": "intent", "intent": "semantic"}
         yield {"type": "searching", "query": "vat", "found": 1}
         yield {"type": "result", "result": SynthesisResult(

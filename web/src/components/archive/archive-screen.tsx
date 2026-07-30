@@ -9,7 +9,14 @@
  */
 
 import { useState } from "react";
-import { FolderOpen, FolderPlus, LayoutGrid, Search, TableProperties } from "lucide-react";
+import {
+  FolderOpen,
+  FolderPlus,
+  LayoutGrid,
+  Search,
+  Sparkles,
+  TableProperties,
+} from "lucide-react";
 
 import { EmptyState } from "@/components/page-scaffold";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -18,6 +25,7 @@ import { Toast } from "@/components/ui/toast";
 import { BreadcrumbBar } from "@/components/archive/breadcrumb-bar";
 import { FolderGrid } from "@/components/archive/folder-grid";
 import { FolderTree } from "@/components/archive/folder-tree";
+import { FolderChat } from "@/components/archive/folder-chat";
 import { LeafView } from "@/components/archive/leaf-view";
 import { ArchiveDnd } from "@/features/archive/dnd";
 import {
@@ -40,6 +48,7 @@ export function ArchiveScreen({ folderSegment }: { folderSegment?: string }) {
   const [view, setView] = useState<ViewMode>("table");
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const { data: classData, isPending: classesPending } = useClasses();
 
@@ -82,9 +91,17 @@ export function ArchiveScreen({ folderSegment }: { folderSegment?: string }) {
           <h1 className="truncate type-title1 text-text-1">{title}</h1>
         </div>
         {isFolderView ? (
-          <NewFolderButton onCreated={(name) => setToast(`Created “${name}”`)} />
+          <div className="flex items-center gap-3">
+            {filter.kind === "class" ? (
+              <AskFolderButton onOpen={() => setChatOpen(true)} />
+            ) : null}
+            <NewFolderButton onCreated={(name) => setToast(`Created “${name}”`)} />
+          </div>
         ) : (
           <div className="flex items-center gap-3">
+            {filter.kind === "class" ? (
+              <AskFolderButton onOpen={() => setChatOpen(true)} />
+            ) : null}
             <label className="relative hidden sm:block sm:w-64">
               <Search
                 aria-hidden
@@ -123,9 +140,33 @@ export function ArchiveScreen({ folderSegment }: { folderSegment?: string }) {
       )}
       </div>
 
+      {filter.kind === "class" ? (
+        <FolderChat
+          classSlug={filter.slug}
+          folderName={title}
+          open={chatOpen}
+          onClose={() => setChatOpen(false)}
+        />
+      ) : null}
+
       <Toast open={!!toast} message={toast ?? ""} onDismiss={() => setToast(null)} />
     </div>
     </ArchiveDnd>
+  );
+}
+
+/** Opens the docked, folder-scoped chat. Only shown inside a real folder —
+ *  "All documents" is what the full Ask screen already answers. */
+function AskFolderButton({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="pressable flex min-h-9 items-center gap-2 rounded-md border border-accent-300 bg-accent-50 px-3 type-subhead text-accent-text transition-colors hover:bg-accent-100"
+    >
+      <Sparkles aria-hidden className="size-4" strokeWidth={1.75} />
+      Ask this folder
+    </button>
   );
 }
 
