@@ -19,6 +19,7 @@ import { BreadcrumbBar } from "@/components/archive/breadcrumb-bar";
 import { FolderGrid } from "@/components/archive/folder-grid";
 import { FolderTree } from "@/components/archive/folder-tree";
 import { LeafView } from "@/components/archive/leaf-view";
+import { ArchiveDnd } from "@/features/archive/dnd";
 import {
   useArchiveDocuments,
   useClasses,
@@ -59,6 +60,7 @@ export function ArchiveScreen({ folderSegment }: { folderSegment?: string }) {
   const isFolderView = tiles !== null;
 
   return (
+    <ArchiveDnd onToast={setToast}>
     <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:py-8">
       <FolderTree filter={filter} onToast={setToast} />
       <div className="flex min-w-0 flex-1 flex-col">
@@ -123,6 +125,7 @@ export function ArchiveScreen({ folderSegment }: { folderSegment?: string }) {
 
       <Toast open={!!toast} message={toast ?? ""} onDismiss={() => setToast(null)} />
     </div>
+    </ArchiveDnd>
   );
 }
 

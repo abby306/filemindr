@@ -14,9 +14,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Folder, FolderTree, Inbox } from "lucide-react";
+import clsx from "clsx";
 
 import { folderMenuItems } from "@/components/archive/folder-menu";
 import { ContextMenu, type MenuAnchor } from "@/components/ui/context-menu";
+import { useFolderDrop, useIsDragging } from "@/features/archive/dnd";
 import { useFolderCommands, type FolderRef } from "@/features/archive/use-folder-commands";
 import type { FolderTile } from "@/features/archive/taxonomy";
 
@@ -127,8 +129,19 @@ function FolderTileLink({
     </>
   );
 
-  const className =
-    "pressable animate-rise-in group relative flex flex-col rounded-lg border border-border bg-surface p-4 transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] hover:-translate-y-0.5 hover:border-border-strong hover:shadow-e2";
+  const { setNodeRef, isOver } = useFolderDrop(tile.id, tile.name);
+  const dragging = useIsDragging();
+
+  const className = clsx(
+    "pressable animate-rise-in group relative flex flex-col rounded-lg border bg-surface p-4 transition-[transform,box-shadow,border-color] duration-[var(--dur-base)] hover:-translate-y-0.5 hover:border-border-strong hover:shadow-e2",
+    // A live drag makes every folder a visible target; the one under the
+    // pointer commits to the accent.
+    isOver
+      ? "border-accent bg-accent-wash shadow-e2"
+      : dragging
+        ? "border-dashed border-accent-300"
+        : "border-border",
+  );
 
   // While renaming the tile stops being a link, so typing (and Space) reaches
   // the input instead of navigating.
@@ -142,6 +155,7 @@ function FolderTileLink({
 
   return (
     <Link
+      ref={setNodeRef}
       href={`/archive/${tile.slug}`}
       data-folder-slug={tile.slug}
       style={riseDelay(index)}

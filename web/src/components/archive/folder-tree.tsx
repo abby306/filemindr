@@ -25,6 +25,7 @@ import clsx from "clsx";
 
 import { folderMenuItems } from "@/components/archive/folder-menu";
 import { ContextMenu, type MenuAnchor } from "@/components/ui/context-menu";
+import { useFolderDrop } from "@/features/archive/dnd";
 import { useClasses } from "@/features/archive/queries";
 import { useFolderCommands, type FolderRef } from "@/features/archive/use-folder-commands";
 import type { FolderFilter } from "@/features/archive/taxonomy";
@@ -247,17 +248,23 @@ function TreeParent({
   const hasChildren = childClasses.length > 0;
   const active = activeSlug === cls.slug;
   const renaming = renamingId === cls.id;
+  const { setNodeRef, isOver } = useFolderDrop(cls.id, cls.name);
 
   return (
     <div>
       <div
+        ref={setNodeRef}
         onContextMenu={(e) => {
           e.preventDefault();
           onContextMenu({ x: e.clientX, y: e.clientY }, cls);
         }}
         className={clsx(
           "group flex items-center rounded-md pr-1 transition-colors",
-          active ? "bg-accent-wash" : "hover:bg-surface-2",
+          isOver
+            ? "bg-accent-wash ring-1 ring-accent"
+            : active
+              ? "bg-accent-wash"
+              : "hover:bg-surface-2",
         )}
       >
         {hasChildren ? (
@@ -306,42 +313,59 @@ function TreeParent({
       {open && hasChildren ? (
         <div className="ml-3 border-l border-border pl-1.5">
           {childClasses.map((c) => (
-            <div
-              key={c.id}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                onContextMenu({ x: e.clientX, y: e.clientY }, c);
-              }}
-            >
-              {renamingId === c.id ? (
-                <span className="flex items-center py-1 pl-2 pr-1">
-                  <RenameField
-                    name={c.name}
-                    onSubmit={(value) => onRenameSubmit(c, value)}
-                    onCancel={onRenameCancel}
-                  />
-                </span>
-              ) : (
-                <Link
-                  href={`/archive/${c.slug}`}
-                  aria-current={activeSlug === c.slug ? "page" : undefined}
-                  className={clsx(
-                    "flex items-center gap-2 rounded-md py-1.5 pl-2 pr-1 type-subhead transition-colors",
-                    activeSlug === c.slug
-                      ? "bg-accent-wash text-accent-text"
-                      : "text-text-2 hover:bg-surface-2 hover:text-text-1",
-                  )}
-                >
-                  <span className="truncate">{c.name}</span>
-                  {c.document_count > 0 ? (
-                    <span className="ml-auto type-data text-text-3">{c.document_count}</span>
-                  ) : null}
-                </Link>
-              )}
-            </div>
+            <TreeChild key={c.id} cls={c} {...handlers} />
           ))}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function TreeChild({
+  cls,
+  activeSlug,
+  renamingId,
+  onRenameSubmit,
+  onRenameCancel,
+  onContextMenu,
+}: { cls: ClassInfo } & NodeHandlers) {
+  const { setNodeRef, isOver } = useFolderDrop(cls.id, cls.name);
+  const active = activeSlug === cls.slug;
+
+  return (
+    <div
+      ref={setNodeRef}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onContextMenu({ x: e.clientX, y: e.clientY }, cls);
+      }}
+      className={clsx("rounded-md", isOver && "bg-accent-wash ring-1 ring-accent")}
+    >
+      {renamingId === cls.id ? (
+        <span className="flex items-center py-1 pl-2 pr-1">
+          <RenameField
+            name={cls.name}
+            onSubmit={(value) => onRenameSubmit(cls, value)}
+            onCancel={onRenameCancel}
+          />
+        </span>
+      ) : (
+        <Link
+          href={`/archive/${cls.slug}`}
+          aria-current={active ? "page" : undefined}
+          className={clsx(
+            "flex items-center gap-2 rounded-md py-1.5 pl-2 pr-1 type-subhead transition-colors",
+            active
+              ? "bg-accent-wash text-accent-text"
+              : "text-text-2 hover:bg-surface-2 hover:text-text-1",
+          )}
+        >
+          <span className="truncate">{cls.name}</span>
+          {cls.document_count > 0 ? (
+            <span className="ml-auto type-data text-text-3">{cls.document_count}</span>
+          ) : null}
+        </Link>
+      )}
     </div>
   );
 }

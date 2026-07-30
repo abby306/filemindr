@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight, CornerLeftUp } from "lucide-react";
 import clsx from "clsx";
 
+import { useFolderDrop } from "@/features/archive/dnd";
 import type { Crumb } from "@/features/archive/taxonomy";
 
 export function BreadcrumbBar({
@@ -73,20 +74,33 @@ export function BreadcrumbBar({
                   {c.label}
                 </span>
               ) : (
-                <Link
-                  href={c.href}
-                  className={clsx(
-                    "rounded-sm px-1.5 py-0.5 type-subhead text-text-2 transition-colors",
-                    "hover:bg-surface hover:text-text-1",
-                  )}
-                >
-                  {c.label}
-                </Link>
+                <CrumbLink crumb={c} />
               )}
             </span>
           );
         })}
       </nav>
     </div>
+  );
+}
+
+/** An ancestor crumb. Folder crumbs double as drop targets, so dragging a
+ *  document onto "Financial" files it one level up — the address bar's version
+ *  of Explorer's drag-to-parent. */
+function CrumbLink({ crumb }: { crumb: Crumb }) {
+  const { setNodeRef, isOver } = useFolderDrop(crumb.id ?? "", crumb.label);
+  return (
+    <Link
+      ref={crumb.id ? setNodeRef : undefined}
+      href={crumb.href}
+      className={clsx(
+        "rounded-sm px-1.5 py-0.5 type-subhead transition-colors",
+        isOver && crumb.id
+          ? "bg-accent-wash text-accent-text ring-1 ring-accent"
+          : "text-text-2 hover:bg-surface hover:text-text-1",
+      )}
+    >
+      {crumb.label}
+    </Link>
   );
 }

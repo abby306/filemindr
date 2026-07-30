@@ -198,6 +198,11 @@ export function LeafView({
               onSelect={select}
               onQuickLook={(d) => setQuickLook(d)}
               onRowContextMenu={openMenu}
+              dragIdsFor={(doc) =>
+                selectedIds.has(doc.id) && selectedIds.size > 1
+                  ? [...selectedIds]
+                  : [doc.id]
+              }
             />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

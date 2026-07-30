@@ -12,7 +12,7 @@
  * a shift-range follows the sort the user is looking at.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, Eye } from "lucide-react";
@@ -24,6 +24,7 @@ import { RetryButton } from "@/components/documents/retry-button";
 import type { MenuAnchor } from "@/components/ui/context-menu";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PipelineFill } from "@/components/upload/pipeline-fill";
+import { useDocumentDrag } from "@/features/archive/dnd";
 import { isProcessing } from "@/features/archive/taxonomy";
 import { formatBytes, formatDate } from "@/lib/format";
 import type { DocumentSummary } from "@/lib/api/types";
@@ -72,6 +73,7 @@ export function DocumentTable({
   onSelect,
   onQuickLook,
   onRowContextMenu,
+  dragIdsFor,
 }: {
   docs: DocumentSummary[];
   onMoved: (folderName: string) => void;
@@ -81,6 +83,9 @@ export function DocumentTable({
   onSelect?: (click: RowClick) => void;
   onQuickLook?: (doc: DocumentSummary) => void;
   onRowContextMenu?: (click: RowClick, anchor: MenuAnchor) => void;
+  /** When provided, rows are draggable onto folders; returns what a drag of
+   *  this row carries (the whole selection when the row is part of it). */
+  dragIdsFor?: (doc: DocumentSummary) => string[];
 }) {
   const router = useRouter();
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
@@ -143,8 +148,12 @@ export function DocumentTable({
           </thead>
           <tbody>
             {sorted.map((doc, i) => (
-              <tr
+              <Row
                 key={doc.id}
+                doc={doc}
+                index={i}
+                selected={!!selectedIds?.has(doc.id)}
+                dragIds={dragIdsFor?.(doc)}
                 onClick={(e) =>
                   onSelect
                     ? onSelect(rowClick(doc, i, e))
@@ -156,13 +165,6 @@ export function DocumentTable({
                   e.preventDefault();
                   onRowContextMenu(rowClick(doc, i, e), { x: e.clientX, y: e.clientY });
                 }}
-                aria-selected={selectedIds?.has(doc.id)}
-                style={riseDelay(i)}
-                className={clsx(
-                  // select-none: shift-clicking a range shouldn't smear a text selection across rows.
-                  "animate-rise-in group cursor-pointer select-none border-b border-border transition-colors duration-[var(--dur-micro)] last:border-b-0",
-                  selectedIds?.has(doc.id) ? "bg-accent-wash" : "hover:bg-surface-2",
-                )}
               >
                 <td className="py-2 pl-3 pr-2">
                   <div className="flex items-center gap-3">
@@ -234,7 +236,7 @@ export function DocumentTable({
                     <MoveMenu doc={doc} onMoved={onMoved} />
                   </div>
                 </td>
-              </tr>
+              </Row>
             ))}
           </tbody>
         </table>
@@ -278,6 +280,62 @@ export function DocumentTable({
       </div>
     </>
   );
+}
+
+/**
+ * One table row. It exists as a component (rather than inline JSX) because the
+ * drag hook is per-row — and it keeps the row's interaction contract in one
+ * place: click selects, double-click opens, right-click menus, drag refiles.
+ */
+function Row({
+  doc,
+  index,
+  selected,
+  dragIds,
+  onClick,
+  onDoubleClick,
+  onContextMenu,
+  children,
+}: {
+  doc: DocumentSummary;
+  index: number;
+  selected: boolean;
+  dragIds?: string[];
+  onClick: (e: MouseEvent<HTMLTableRowElement>) => void;
+  onDoubleClick: () => void;
+  onContextMenu: (e: MouseEvent<HTMLTableRowElement>) => void;
+  children: ReactNode;
+}) {
+  const drag = useDocumentDrag(doc.id, dragIds ?? [doc.id], dragLabel(doc, dragIds));
+
+  return (
+    <tr
+      ref={dragIds ? drag.setNodeRef : undefined}
+      {...(dragIds ? drag.handleProps : {})}
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
+      onContextMenu={onContextMenu}
+      aria-selected={selected}
+      style={riseDelay(index)}
+      className={clsx(
+        // select-none: shift-clicking a range shouldn't smear a text selection across rows.
+        "animate-rise-in group cursor-pointer select-none border-b border-border transition-colors duration-[var(--dur-micro)] last:border-b-0",
+        selected ? "bg-accent-wash" : "hover:bg-surface-2",
+        // The row stays put while its ghost travels — only dimmed, so the
+        // list doesn't reflow under the pointer. `!` is required: the row's
+        // `rise-in` animation runs with `both`, and a filled animation
+        // out-ranks a plain declaration (only !important beats it).
+        drag.isDragging && "opacity-40!",
+      )}
+    >
+      {children}
+    </tr>
+  );
+}
+
+/** What the drag ghost says: one title, or how many documents are moving. */
+function dragLabel(doc: DocumentSummary, ids?: string[]): string {
+  return ids && ids.length > 1 ? `${ids.length} documents` : displayTitle(doc);
 }
 
 function Th({

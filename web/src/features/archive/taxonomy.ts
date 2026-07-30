@@ -148,6 +148,8 @@ export interface Crumb {
   href: string;
   /** class slug for a folder crumb (used to target drag/drop, context menus). */
   slug?: string;
+  /** class id — present on folder crumbs, which are drop targets. */
+  id?: string;
 }
 
 /** Ancestor trail for the address bar: Archive ▸ Parent ▸ Child. */
@@ -169,10 +171,11 @@ export function breadcrumbFor(filter: FolderFilter, classes: ClassInfo[]): Crumb
         label: parent.name,
         href: folderHref({ kind: "class", slug: parent.slug }),
         slug: parent.slug,
+        id: parent.id,
       });
     }
   }
-  crumbs.push({ label: cls.name, href: folderHref(filter), slug: cls.slug });
+  crumbs.push({ label: cls.name, href: folderHref(filter), slug: cls.slug, id: cls.id });
   return crumbs;
 }
 
