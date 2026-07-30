@@ -17,6 +17,7 @@ import { useClasses, useRefile } from "@/features/archive/queries";
 import { useDeleteDocument } from "@/features/documents/queries";
 import type { DocumentSummary } from "@/lib/api/types";
 import { useDismiss } from "@/lib/use-dismiss";
+import { usePresence } from "@/lib/use-presence";
 
 export function MoveMenu({
   doc,
@@ -31,6 +32,7 @@ export function MoveMenu({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, () => setOpen(false), open);
+  const { mounted, state } = usePresence(open, 120);
 
   if (!data) return null;
 
@@ -58,15 +60,20 @@ export function MoveMenu({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={clsx(
-          "flex size-11 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-accent-text sm:size-8",
+          "pressable flex size-11 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-accent-text sm:size-8",
           open && "bg-surface-2 text-accent-text",
         )}
       >
         <FolderInput aria-hidden className="size-4" strokeWidth={1.75} />
       </button>
 
-      {open ? (
-        <div className="absolute right-0 top-full z-30 mt-1 max-h-72 w-56 overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-e2">
+      {mounted ? (
+        <div
+          className={clsx(
+            "absolute right-0 top-full z-30 mt-1 max-h-72 w-56 origin-top-right overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-e2",
+            state === "closing" ? "animate-pop-out" : "animate-pop-in",
+          )}
+        >
           <p className="px-2.5 pb-1 pt-1.5 type-caption uppercase text-text-3">
             Move to folder
           </p>

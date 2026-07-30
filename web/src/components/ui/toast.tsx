@@ -7,6 +7,9 @@
  */
 
 import { useEffect } from "react";
+import clsx from "clsx";
+
+import { usePresence } from "@/lib/use-presence";
 
 export function Toast({
   open,
@@ -23,26 +26,31 @@ export function Toast({
   onDismiss: () => void;
   duration?: number;
 }) {
+  const { mounted, state } = usePresence(open, 160);
+
   useEffect(() => {
     if (!open) return;
     const t = window.setTimeout(onDismiss, duration);
     return () => window.clearTimeout(t);
   }, [open, duration, onDismiss]);
 
-  if (!open) return null;
+  if (!mounted) return null;
 
   return (
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border border-border-strong bg-p-900 px-4 py-2.5 text-p-0 shadow-e3"
+      className={clsx(
+        "fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border border-border-strong bg-p-900 px-4 py-2.5 text-p-0 shadow-e3",
+        state === "closing" ? "animate-toast-out" : "animate-toast-in",
+      )}
     >
       <span className="type-subhead">{message}</span>
       {actionLabel && onAction ? (
         <button
           type="button"
           onClick={onAction}
-          className="type-subhead text-accent-300 underline-offset-2 hover:underline"
+          className="pressable type-subhead text-accent-300 underline-offset-2 hover:underline"
         >
           {actionLabel}
         </button>

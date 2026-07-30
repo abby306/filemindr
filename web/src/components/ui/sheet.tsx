@@ -12,6 +12,8 @@ import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import clsx from "clsx";
 
+import { usePresence } from "@/lib/use-presence";
+
 export function Sheet({
   open,
   onClose,
@@ -27,6 +29,7 @@ export function Sheet({
   tall?: boolean;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const { mounted, state } = usePresence(open, 180);
 
   useEffect(() => {
     if (!open) return;
@@ -41,21 +44,26 @@ export function Sheet({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!mounted) return null;
+  const closing = state === "closing";
 
   return (
     <div className="fixed inset-0 z-50">
       <div
         onClick={onClose}
         aria-hidden
-        className="absolute inset-0 bg-p-950/40"
+        className={clsx(
+          "absolute inset-0 bg-p-950/40",
+          closing ? "animate-fade-out" : "animate-fade-in",
+        )}
       />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className={clsx(
-          "animate-sheet-up absolute inset-x-0 bottom-0 flex flex-col rounded-t-xl border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] shadow-e3",
+          "absolute inset-x-0 bottom-0 flex flex-col rounded-t-xl border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] shadow-e3",
+          closing ? "animate-sheet-down" : "animate-sheet-up",
           tall ? "h-[85dvh]" : "max-h-[70dvh]",
         )}
       >
@@ -67,7 +75,7 @@ export function Sheet({
             type="button"
             onClick={onClose}
             aria-label={`Close ${title}`}
-            className="flex size-11 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
+            className="pressable flex size-11 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text-1"
           >
             <X aria-hidden className="size-5" />
           </button>

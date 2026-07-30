@@ -169,7 +169,7 @@ export function ReviewDeck() {
           </p>
           <Link
             href="/archive"
-            className="mt-6 flex min-h-11 items-center rounded-md bg-accent px-4 type-subhead text-on-accent transition-colors hover:bg-accent-hover"
+            className="pressable mt-6 flex min-h-11 items-center rounded-md bg-accent px-4 type-subhead text-on-accent transition-colors hover:bg-accent-hover"
           >
             Open the archive
           </Link>

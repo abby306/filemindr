@@ -85,7 +85,7 @@ function ErrorPanel({ onRetry }: { onRetry: () => void }) {
       <button
         type="button"
         onClick={onRetry}
-        className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md bg-accent px-4 type-subhead text-on-accent hover:bg-accent-hover"
+        className="pressable mt-4 inline-flex min-h-11 items-center gap-2 rounded-md bg-accent px-4 type-subhead text-on-accent hover:bg-accent-hover"
       >
         <RefreshCw aria-hidden className="size-4" /> Try again
       </button>

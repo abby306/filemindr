@@ -75,9 +75,11 @@
   --e3: 0 16px 48px rgba(12, 13, 16, 0.16);
 
   /* motion — fast, quiet; exits faster than entrances */
-  --ease-quiet: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-quiet: cubic-bezier(0.32, 0.72, 0, 1); /* Ionic drawer curve — sheets/drawers */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* strong ease-out — entrances, feedback, menus */
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.15);
+  --dur-press: 140ms;
   --dur-micro: 120ms;
   --dur-base: 160ms;
   --dur-emphasis: 220ms;
@@ -340,6 +342,112 @@
    Motion — every animation fires once, on a real state change.
    ----------------------------------------------------------------------------- */
 @layer components {
+  /* Press feedback — every pressable acknowledges the tap (subtle scale). The
+     content scales with it (scale() scales children), so icons + labels move
+     together. Reduced-motion collapses the transition; the state still applies. */
+  .pressable {
+    transition: transform var(--dur-press) var(--ease-out);
+  }
+  .pressable:active {
+    transform: scale(0.97);
+  }
+
+  /* Popover/menu — scales in from its trigger corner (set transform-origin at the
+     call site, e.g. `origin-top-right`). Exit is faster than enter. */
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .animate-pop-in {
+    animation: pop-in 150ms var(--ease-out) both;
+  }
+  @keyframes pop-out {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
+  .animate-pop-out {
+    animation: pop-out 120ms var(--ease-out) both;
+  }
+
+  /* Scrim fades — for overlays that keep the surface mounted through exit. */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .animate-fade-in {
+    animation: fade-in var(--dur-base) var(--ease-out) both;
+  }
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  .animate-fade-out {
+    animation: fade-out var(--dur-micro) var(--ease-out) both;
+  }
+
+  /* Bottom-sheet exit — mirrors sheet-up, faster (exits faster than entrances). */
+  @keyframes sheet-down {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+  }
+  .animate-sheet-down {
+    animation: sheet-down 180ms var(--ease-quiet) both;
+  }
+
+  /* Toast — enters and exits the same edge (spatial consistency for dismissal). */
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 8px);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+  .animate-toast-in {
+    animation: toast-in var(--dur-base) var(--ease-out) both;
+  }
+  @keyframes toast-out {
+    from {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    to {
+      opacity: 0;
+      transform: translate(-50%, 8px);
+    }
+  }
+  .animate-toast-out {
+    animation: toast-out var(--dur-micro) var(--ease-out) both;
+  }
+
   /* Review-deck card advance (fade + rise). */
   @keyframes review-in {
     from {

@@ -45,7 +45,7 @@ export function UploadingCard({
               <button
                 type="button"
                 onClick={() => onRetry(entry.id)}
-                className="min-h-9 rounded-md bg-accent px-3 type-subhead text-on-accent transition-colors hover:bg-accent-hover"
+                className="pressable min-h-9 rounded-md bg-accent px-3 type-subhead text-on-accent transition-colors hover:bg-accent-hover"
               >
                 Retry
               </button>

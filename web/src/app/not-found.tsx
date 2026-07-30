@@ -13,7 +13,7 @@ export default function NotFound() {
       </p>
       <Link
         href="/"
-        className="mt-5 flex min-h-11 items-center rounded-md bg-accent px-4 type-subhead text-on-accent transition-colors hover:bg-accent-hover"
+        className="pressable mt-5 flex min-h-11 items-center rounded-md bg-accent px-4 type-subhead text-on-accent transition-colors hover:bg-accent-hover"
       >
         Back to Upload
       </Link>

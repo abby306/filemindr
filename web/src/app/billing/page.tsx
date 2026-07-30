@@ -86,7 +86,7 @@ function ErrorPanel({ onRetry }: { onRetry: () => void }) {
       <button
         type="button"
         onClick={onRetry}
-        className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md bg-accent px-4 type-subhead text-on-accent hover:bg-accent-hover"
+        className="pressable mt-4 inline-flex min-h-11 items-center gap-2 rounded-md bg-accent px-4 type-subhead text-on-accent hover:bg-accent-hover"
       >
         <RefreshCw aria-hidden className="size-4" /> Try again
       </button>
@@ -248,7 +248,7 @@ export default function BillingPage() {
                             type="button"
                             disabled={pendingPlan !== null}
                             onClick={() => startUpgrade(plan.slug)}
-                            className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 type-subhead text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
+                            className="pressable inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 type-subhead text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
                           >
                             {pendingPlan === plan.slug
                               ? "Opening checkout…"

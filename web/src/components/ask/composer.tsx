@@ -167,7 +167,7 @@ export function Composer({
             setToken(null);
           }}
           className={clsx(
-            "flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+            "pressable flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors",
             open ? "bg-accent-50 text-accent-text" : "text-text-3 hover:bg-surface-2 hover:text-text-1",
           )}
         >
@@ -216,7 +216,7 @@ export function Composer({
           onClick={submit}
           disabled={disabled || !value.trim()}
           aria-label="Send"
-          className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-40"
+          className="pressable flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-40"
         >
           <ArrowUp aria-hidden className="size-4" />
         </button>

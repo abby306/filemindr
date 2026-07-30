@@ -90,7 +90,7 @@ function CheckoutBody() {
           type="button"
           onClick={confirm}
           disabled={complete.isPending || plans.isPending}
-          className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 type-subhead text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
+          className="pressable mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 type-subhead text-on-accent transition-colors hover:bg-accent-hover disabled:opacity-50"
         >
           {complete.isPending ? "Completing…" : "Complete purchase"}
         </button>
