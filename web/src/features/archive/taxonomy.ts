@@ -127,6 +127,85 @@ export function filterKey(filter: FolderFilter): string {
   }
 }
 
+/* -----------------------------------------------------------------------------
+   Directory model — walk the taxonomy like a filesystem. Slugs are unique per
+   account, so a single-segment URL (/archive/{slug}) still identifies a node;
+   the parent/child hierarchy is derived from the class tree for breadcrumbs and
+   "up" navigation. A node is a *folder* (show subfolder tiles) when it's the
+   root or a parent that has child folders; otherwise it's a *leaf* (show docs).
+   ----------------------------------------------------------------------------- */
+
+export interface Crumb {
+  label: string;
+  href: string;
+  /** class slug for a folder crumb (used to target drag/drop, context menus). */
+  slug?: string;
+}
+
+/** Ancestor trail for the address bar: Archive ▸ Parent ▸ Child. */
+export function breadcrumbFor(filter: FolderFilter, classes: ClassInfo[]): Crumb[] {
+  const root: Crumb = { label: "Archive", href: "/archive" };
+  if (filter.kind === "all") return [{ label: "All documents", href: "/archive" }];
+  if (filter.kind === "needs_review") {
+    return [root, { label: "Needs review", href: folderHref(filter) }];
+  }
+  const cls = classes.find((c) => c.slug === filter.slug);
+  if (!cls) {
+    return [root, { label: filter.slug, href: folderHref(filter), slug: filter.slug }];
+  }
+  const crumbs: Crumb[] = [root];
+  if (cls.parent_slug) {
+    const parent = classes.find((c) => c.slug === cls.parent_slug);
+    if (parent) {
+      crumbs.push({
+        label: parent.name,
+        href: folderHref({ kind: "class", slug: parent.slug }),
+        slug: parent.slug,
+      });
+    }
+  }
+  crumbs.push({ label: cls.name, href: folderHref(filter), slug: cls.slug });
+  return crumbs;
+}
+
+/** The parent whose folder view "up" leads to (or /archive at the top). */
+export function parentHref(filter: FolderFilter, classes: ClassInfo[]): string {
+  const trail = breadcrumbFor(filter, classes);
+  return trail.length > 1 ? trail[trail.length - 2].href : "/archive";
+}
+
+export interface FolderTile {
+  slug: string;
+  name: string;
+  count: number;
+  isSystem: boolean;
+  hasChildren: boolean;
+}
+
+function toTile(cls: ClassInfo, count: number, hasChildren: boolean): FolderTile {
+  return { slug: cls.slug, name: cls.name, count, isSystem: cls.is_system, hasChildren };
+}
+
+/**
+ * The folder tiles to show *inside* a node, or `null` when the node is a leaf
+ * (render its documents instead). Root → parent categories; a parent with child
+ * folders → those children; anything else → leaf.
+ */
+export function folderTilesFor(
+  filter: FolderFilter,
+  tree: FolderNode[],
+): FolderTile[] | null {
+  if (filter.kind === "all") {
+    return tree.map((n) => toTile(n.cls, n.totalCount, n.children.length > 0));
+  }
+  if (filter.kind === "needs_review") return null;
+  const node = tree.find((n) => n.cls.slug === filter.slug);
+  if (node && node.children.length > 0) {
+    return node.children.map((c) => toTile(c, c.document_count, false));
+  }
+  return null; // childless parent, a child slug, or an empty custom folder
+}
+
 export const CLASS_FOLDER_ICON: LucideIcon = FolderClosed;
 
 /* -----------------------------------------------------------------------------
