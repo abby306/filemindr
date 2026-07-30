@@ -16,10 +16,9 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toast } from "@/components/ui/toast";
 import { BreadcrumbBar } from "@/components/archive/breadcrumb-bar";
-import { DocumentCard } from "@/components/archive/document-card";
-import { DocumentTable } from "@/components/archive/document-table";
 import { FolderGrid } from "@/components/archive/folder-grid";
 import { FolderTree } from "@/components/archive/folder-tree";
+import { LeafView } from "@/components/archive/leaf-view";
 import {
   useArchiveDocuments,
   useClasses,
@@ -266,29 +265,13 @@ function DocumentResults({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {view === "table" ? (
-        <DocumentTable docs={docs} onMoved={onMoved} />
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {docs.map((doc) => (
-            <DocumentCard key={doc.id} doc={doc} />
-          ))}
-        </div>
-      )}
-
-      {hasNextPage ? (
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-            className="pressable min-h-11 rounded-md border border-border bg-surface px-5 type-subhead text-text-1 transition-colors hover:bg-surface-2 disabled:opacity-60"
-          >
-            {isFetchingNextPage ? "Loading…" : "Load more"}
-          </button>
-        </div>
-      ) : null}
-    </div>
+    <LeafView
+      docs={docs}
+      view={view}
+      onMoved={onMoved}
+      hasNextPage={!!hasNextPage}
+      fetchNextPage={fetchNextPage}
+      isFetchingNextPage={isFetchingNextPage}
+    />
   );
 }

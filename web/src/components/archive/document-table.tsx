@@ -11,7 +11,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye } from "lucide-react";
 import clsx from "clsx";
 
 import { PageThumb } from "@/components/archive/page-thumb";
@@ -48,9 +48,17 @@ const riseDelay = (i: number) => ({ animationDelay: `${Math.min(i, 12) * 40}ms` 
 export function DocumentTable({
   docs,
   onMoved,
+  selectedId,
+  onSelect,
+  onQuickLook,
 }: {
   docs: DocumentSummary[];
   onMoved: (folderName: string) => void;
+  /** When provided, a row single-click selects (Explorer-style) instead of
+   *  opening; double-click / title / Enter still open. */
+  selectedId?: string | null;
+  onSelect?: (doc: DocumentSummary) => void;
+  onQuickLook?: (doc: DocumentSummary) => void;
 }) {
   const router = useRouter();
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
@@ -100,9 +108,16 @@ export function DocumentTable({
             {sorted.map((doc, i) => (
               <tr
                 key={doc.id}
-                onClick={() => router.push(`/documents/${doc.id}`)}
+                onClick={() =>
+                  onSelect ? onSelect(doc) : router.push(`/documents/${doc.id}`)
+                }
+                onDoubleClick={() => router.push(`/documents/${doc.id}`)}
+                aria-selected={selectedId === doc.id}
                 style={riseDelay(i)}
-                className="animate-rise-in group cursor-pointer border-b border-border transition-colors duration-[var(--dur-micro)] last:border-b-0 hover:bg-surface-2"
+                className={clsx(
+                  "animate-rise-in group cursor-pointer border-b border-border transition-colors duration-[var(--dur-micro)] last:border-b-0",
+                  selectedId === doc.id ? "bg-accent-wash" : "hover:bg-surface-2",
+                )}
               >
                 <td className="py-2 pl-3 pr-2">
                   <div className="flex items-center gap-3">
@@ -157,7 +172,22 @@ export function DocumentTable({
                   {formatDate(doc.created_at)}
                 </td>
                 <td className="py-2 pr-2">
-                  <MoveMenu doc={doc} onMoved={onMoved} />
+                  <div className="flex items-center justify-end gap-0.5">
+                    {onQuickLook ? (
+                      <button
+                        type="button"
+                        aria-label={`Quick look: ${displayTitle(doc)}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onQuickLook(doc);
+                        }}
+                        className="pressable flex size-8 items-center justify-center rounded-md text-text-3 opacity-0 transition-[opacity,color] hover:bg-surface-2 hover:text-text-1 focus-visible:opacity-100 group-hover:opacity-100"
+                      >
+                        <Eye aria-hidden className="size-4" strokeWidth={1.75} />
+                      </button>
+                    ) : null}
+                    <MoveMenu doc={doc} onMoved={onMoved} />
+                  </div>
                 </td>
               </tr>
             ))}
