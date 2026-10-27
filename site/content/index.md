@@ -13,6 +13,8 @@ Filemindr's source code is at [github.com/abby306/filemindr](https://github.com/
 
 ![Filemindr answering a cross-document question with a live retrieval trace and page-level citations](../../docs/assets/screenshots/agentic-answer-citations.webp)
 
+*Screenshots are from Filemindr Cloud, the hosted product built on this open-source core, using a fictional demo company. The self-hosted web app runs the same pipeline, answers and citations with an earlier visual design.*
+
 ## What Filemindr does
 
 1. **Ingests documents.** It accepts PDF (with or without a text layer), DOCX, PNG and JPEG. Text-layer PDFs are read with PyMuPDF. Scanned pages and images go through Google Cloud Vision OCR. See [OCR and document processing](features/ocr-document-processing.md).

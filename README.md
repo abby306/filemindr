@@ -13,7 +13,7 @@
 
 ![Filemindr answering a question across two documents, with a live retrieval trace and page-level citations](docs/assets/screenshots/agentic-answer-citations.webp)
 
-<sub>Screenshots use a fictional demo company; every answer and citation was produced by the real pipeline.</sub>
+<sub>Screenshots are from Filemindr Cloud, the hosted product built on this open-source core, using a fictional demo company. The self-hosted web app runs the same pipeline, answers and citations with an earlier visual design (separate Upload, Archive, Ask and Review screens).</sub>
 
 ---
 

@@ -39,6 +39,8 @@ Language is detected per document (Vision's own detection, or `langdetect` as a 
 
 ![A scanned form with no text layer, read by OCR and turned into typed facts](../../../docs/assets/screenshots/scanned-pdf-ocr.webp)
 
+*Screenshots are from Filemindr Cloud, the hosted product built on this open-source core, using a fictional demo company. The self-hosted web app runs the same pipeline, answers and citations with an earlier visual design.*
+
 ## Structured extraction with an LLM
 
 One JSON-mode call (DeepSeek `deepseek-chat` by default, `temperature=0`) reads the OCR text and returns:

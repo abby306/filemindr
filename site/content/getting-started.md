@@ -89,6 +89,8 @@ In the web app, open **Ask** and type a question. The answer streams in with a l
 
 ![A citation opens the source page with the clause highlighted](../../docs/assets/screenshots/citation-provenance.webp)
 
+*Screenshots are from Filemindr Cloud, the hosted product built on this open-source core, using a fictional demo company. The self-hosted web app runs the same pipeline, answers and citations with an earlier visual design.*
+
 ## Useful commands
 
 | Command | What it does |
