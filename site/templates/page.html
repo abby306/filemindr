@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% if cfg.site_name in page.title %}{{ page.title }}{% else %}{{ page.title }} | {{ cfg.site_name }}{% endif %}</title>
+<meta name="description" content="{{ page.meta.description }}">
+<link rel="canonical" href="{{ url }}">
+<meta name="robots" content="index, follow">
+{% if cfg.google_site_verification %}<meta name="google-site-verification" content="{{ cfg.google_site_verification }}">
+{% endif %}<meta property="og:type" content="{% if page.meta.type == 'home' %}website{% else %}article{% endif %}">
+<meta property="og:site_name" content="{{ cfg.site_name }}">
+<meta property="og:title" content="{{ page.title }}">
+<meta property="og:description" content="{{ page.meta.description }}">
+<meta property="og:url" content="{{ url }}">
+<meta property="og:image" content="{{ social_image }}">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Filemindr: open-source RAG and document intelligence">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ page.title }}">
+<meta name="twitter:description" content="{{ page.meta.description }}">
+<meta name="twitter:image" content="{{ social_image }}">
+<link rel="sitemap" type="application/xml" href="{{ base_path }}sitemap.xml">
+<link rel="stylesheet" href="{{ base_path }}static/style.css">
+<link rel="icon" href="{{ base_path }}static/favicon.svg" type="image/svg+xml">
+{% for block in json_ld %}<script type="application/ld+json">{{ block | safe }}</script>
+{% endfor %}</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="{{ base_path }}">file<span>mindr</span></a>
+  <span class="tag">{{ cfg.tagline }}</span>
+  <a class="gh" href="{{ cfg.repo_url }}">GitHub</a>
+</header>
+<div class="layout">
+  <nav class="sidenav" aria-label="Documentation">
+    <details open>
+      <summary>Menu</summary>
+      {% for sec in nav %}
+      <p class="navhead">{{ sec.title }}</p>
+      <ul>
+        {% for p in sec["items"] %}
+        <li><a href="{{ base_path }}{{ p.rel_url }}"{% if p.rel_url == page.rel_url %} aria-current="page"{% endif %}>{{ p.nav_title }}</a></li>
+        {% endfor %}
+      </ul>
+      {% endfor %}
+      <p class="navhead">Source</p>
+      <ul><li><a href="{{ cfg.repo_url }}">GitHub repository</a></li></ul>
+    </details>
+  </nav>
+  <main id="content">
+    <article>
+{{ page.html | safe }}
+    </article>
+    <nav class="pager" aria-label="Previous and next page">
+      {% if prev %}<a rel="prev" href="{{ base_path }}{{ prev.rel_url }}">← {{ prev.nav_title }}</a>{% else %}<span></span>{% endif %}
+      {% if next %}<a rel="next" href="{{ base_path }}{{ next.rel_url }}">{{ next.nav_title }} →</a>{% endif %}
+    </nav>
+    <footer>
+      <p>Filemindr is open source under the <a href="{{ cfg.license_url }}">{{ cfg.license_name }}</a> license ·
+      <a href="{{ cfg.repo_url }}">Source on GitHub</a> ·
+      <a href="{{ source_url }}">Edit this page</a> · Updated {{ page.lastmod }}</p>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

@@ -11,3 +11,6 @@ storage/
 dev_ui/
 .claude/skills/
 eval/gold/local*.yaml
+
+# docs site build output
+site/_build/

@@ -1,0 +1,39 @@
+# Single source of truth for the documentation site's public identity.
+# Change `base_url` here (and nowhere else) if the site moves, e.g. to a custom
+# domain. It must end with a slash. Canonical URLs, Open Graph tags, the sitemap,
+# robots.txt and llms.txt are all derived from it.
+base_url: https://abby306.github.io/filemindr/
+
+site_name: Filemindr
+tagline: Open-Source RAG & Document Intelligence Platform
+description: >-
+  Filemindr is an open-source, self-hostable RAG application for documents:
+  OCR, LLM structured extraction, hybrid search with pgvector and Postgres
+  full-text search, and agentic answers with page-level citations.
+repo_url: https://github.com/abby306/filemindr
+license_name: AGPL-3.0
+license_url: https://www.gnu.org/licenses/agpl-3.0.html
+social_image: assets/social-preview.png
+version: "0.1.0"
+
+# Google Search Console "HTML tag" verification token (the content="…" value only).
+# Leave empty until you start verification; see docs/seo/search-console.md.
+google_site_verification: ""
+
+# Navigation order (paths are page URLs relative to base_url).
+nav:
+  - title: Overview
+    items:
+      - ""
+      - getting-started/
+      - faq/
+  - title: Features
+    items:
+      - features/hybrid-search/
+      - features/ocr-document-processing/
+      - features/agentic-rag-citations/
+  - title: Guides
+    items:
+      - self-hosting/
+      - configuration/
+      - architecture/

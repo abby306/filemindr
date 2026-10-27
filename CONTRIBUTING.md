@@ -43,6 +43,9 @@ cd web && npm run build && npm run lint   # must be clean
   and failure paths.
 - If you change schema, endpoints, or conventions, update
   `agent_guide/TECH_SPEC.md` / `API_CONTRACTS.md` in the same PR.
+- If user-visible behaviour or configuration changes, update the matching page
+  in [`site/content/`](site/content/) too. Build and validate the docs with
+  `python site/build.py && python site/check.py` (see [`site/README.md`](site/README.md)).
 
 ## Reporting bugs
 
