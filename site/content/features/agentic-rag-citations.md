@@ -10,6 +10,8 @@ Filemindr doesn't hand the language model a fixed top-k and hope. It runs a shor
 
 ![An answer combining an insurance policy and a lease, with both cited](../../../docs/assets/screenshots/agentic-answer-citations.webp)
 
+*Screenshots are from Filemindr Cloud, the hosted product built on this open-source core, using a fictional demo company. The self-hosted web app runs the same pipeline, answers and citations with an earlier visual design.*
+
 ## What the model sees
 
 Each turn, Gemini 2.5 Flash receives:

@@ -27,7 +27,7 @@ published.** Review, edit, and post them yourself.
    Code links point at `blob/main/...`, so line-level details can drift.
 4. **Keep the limitations sections.** They are what makes the posts credible to
    technical readers, and they head off "is it offline?" comments.
-5. **Images.** Use only screenshots with fictional demo data. Add alt text.
+5. **Images.** Use only screenshots with fictional demo data, and add alt text. The images in `docs/assets/screenshots/` show the Filemindr Cloud UI; say so in captions, or capture fresh ones from the self-hosted app.
 6. **One community per day**, and stay to answer comments. Don't post the same
    text to several subreddits at once.
 7. **Track results** in the measurement template that ships with the docs/SEO
