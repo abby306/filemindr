@@ -3,7 +3,7 @@
 Day-to-day "start it up" guide for a machine that's already set up (Postgres +
 pgvector installed, Python venv created, Node installed, `.env`/secrets in
 place). For a **from-scratch install** on a new machine, see
-[`README.md`](README.md#quickstart-native-no-docker) and
+[`README.md`](README.md#quickstart) and
 [`agent_guide/setup.md`](agent_guide/setup.md) instead — this file assumes
 that's already done.
 
@@ -104,7 +104,7 @@ curl -s localhost:8000/api/v1/documents \
 
 ```bash
 source .venv/bin/activate
-pytest -q                          # 252 tests, offline (all network/model seams mocked)
+pytest -q                          # 285 tests, offline (all network/model seams mocked)
 
 cd web
 npm run build && npm run lint      # both must be clean

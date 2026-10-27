@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://abby306.github.io/filemindr/
+    about: Getting started, self-hosting, configuration, architecture and FAQ.
+  - name: Report a security vulnerability
+    url: https://github.com/abby306/filemindr/security/advisories/new
+    about: Please report security issues privately, not as public issues.

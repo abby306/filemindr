@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest an improvement or new capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: If you have one in mind. For larger changes, sketch the approach so we can agree before code is written.
+  - type: checkboxes
+    id: invariants
+    attributes:
+      label: Project invariants
+      description: See CONTRIBUTING.md
+      options:
+        - label: I've considered account scoping, provenance/citations and the offline test suite for this change

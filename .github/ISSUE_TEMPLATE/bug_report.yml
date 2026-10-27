@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in Filemindr doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Do not paste document contents, API keys or `.env` values** —
+        Filemindr logs can contain text from your documents. Security issues: use private
+        vulnerability reporting (Security tab) instead of an issue.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Upload / OCR
+        - Extraction / classification / review
+        - Retrieval / search
+        - Chat answers / citations
+        - Web app UI
+        - Install / setup
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Upload a scanned PDF (2 pages)
+        2. ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or processing events
+      description: For pipeline issues, `SELECT stage, status, error FROM processing_events WHERE document_id = '…'` helps. Scrub anything personal.
+      render: text
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "Ubuntu 24.04, Python 3.12, Postgres 16 + pgvector 0.8, commit abc1234"

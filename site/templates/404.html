@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found | {{ cfg.site_name }}</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="{{ base_path }}static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="{{ base_path }}">file<span>mindr</span></a>
+  <a class="gh" href="{{ cfg.repo_url }}">GitHub</a>
+</header>
+<main id="content" class="notfound">
+  <h1>Page not found</h1>
+  <p>That page doesn't exist. Try one of these:</p>
+  <ul>
+    {% for sec in nav %}{% for p in sec["items"] %}<li><a href="{{ base_path }}{{ p.rel_url }}">{{ p.nav_title }}</a></li>{% endfor %}{% endfor %}
+  </ul>
+</main>
+</body>
+</html>
